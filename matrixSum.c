@@ -5,7 +5,7 @@
 			 and prints the total sum to the standard output
 
    usage under Linux:
-	 gcc matrixSum.c -lpthread 
+	 gcc matrixSum.c -lpthread
 	 a.out size numWorkers
 
 */
@@ -36,7 +36,7 @@ counter as described for the matrix multiplication problem in Slides 27-29 about
 #include <time.h>
 #include <sys/time.h>
 #define MAXSIZE 10000 /* maximum matrix size 10000*/
-#define MAXWORKERS 10 /* maximum number of workers */
+#define MAXWORKERS 8 /* maximum number of workers */
 
 pthread_mutex_t barrier; /* mutex lock for the barrier */
 pthread_cond_t go;		 /* condition variable for leaving */
@@ -53,8 +53,13 @@ int gMinPosX;
 int gMinPosY;
 
 // my work - mutexes
+/*
 pthread_mutex_t mutex_localMax = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_localMin = PTHREAD_MUTEX_INITIALIZER;
+*/
+pthread_mutex_t mutex_localMax;
+pthread_mutex_t mutex_localMin;
+
 
 /* a reusable counter barrier */
 void Barrier()
@@ -113,6 +118,10 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&barrier, NULL);
 	pthread_cond_init(&go, NULL);
 
+	// my work - initialize mutexes
+	pthread_mutex_init(&mutex_localMax, NULL);
+	pthread_mutex_init(&mutex_localMin, NULL);
+
 	/* read command line args if any */
 	size = (argc > 1) ? atoi(argv[1]) : MAXSIZE;
 	numWorkers = (argc > 2) ? atoi(argv[2]) : MAXWORKERS;
@@ -130,7 +139,7 @@ int main(int argc, char *argv[])
 	{
 		for (j = 0; j < size; j++)
 		{
-			matrix[i][j] = rand() % 99; // 10 000 000;
+			matrix[i][j] = rand() % 99; // 200000000;
 		}
 	}
 
@@ -162,8 +171,8 @@ int main(int argc, char *argv[])
 void *Worker(void *arg)
 {
 	long myid = (long)arg;
-	int total, i, j, first, last;
-
+	int i, j, first, last;
+	int total;
 #ifdef DEBUG
 	printf("worker %d (pthread id %d) has started\n", myid, pthread_self());
 #endif
@@ -188,6 +197,7 @@ void *Worker(void *arg)
 	/* sum values in my strip */
 	total = 0;
 	for (i = first; i <= last; i++)
+	{
 		for (j = 0; j < size; j++)
 		{
 			// my work
@@ -205,10 +215,14 @@ void *Worker(void *arg)
 				minPosX = i;
 				minPosY = j;
 			}
+
 			// end my work
 
+			// printf("matrix state: %d \n", matrix[i][j]);
+			// printf("running total: %d \n", total);
 			total += matrix[i][j];
 		}
+	}
 
 	// my work
 	pthread_mutex_lock(&mutex_localMax);
@@ -224,12 +238,14 @@ void *Worker(void *arg)
 	pthread_mutex_unlock(&mutex_localMin);
 	// end my work
 
+	// printf("total: %d \n", total);
 	sums[myid] = total;
 	Barrier();
 	if (myid == 0)
 	{
 		total = 0;
 		for (i = 0; i < numWorkers; i++)
+			// printf("sums: %d \n", sums[i]);
 			total += sums[i];
 		/* get end time */
 		end_time = read_timer();
