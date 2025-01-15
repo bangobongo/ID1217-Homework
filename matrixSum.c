@@ -36,7 +36,7 @@ counter as described for the matrix multiplication problem in Slides 27-29 about
 #include <time.h>
 #include <sys/time.h>
 #define MAXSIZE 10000 /* maximum matrix size 10000*/
-#define MAXWORKERS 8 /* maximum number of workers */
+#define MAXWORKERS 8  /* maximum number of workers */
 
 pthread_mutex_t barrier; /* mutex lock for the barrier */
 pthread_cond_t go;		 /* condition variable for leaving */
@@ -52,14 +52,7 @@ int globalMin = RAND_MAX;
 int gMinPosX;
 int gMinPosY;
 
-// my work - mutexes
-/*
-pthread_mutex_t mutex_localMax = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_localMin = PTHREAD_MUTEX_INITIALIZER;
-*/
-pthread_mutex_t mutex_localMax;
-pthread_mutex_t mutex_localMin;
-
+long long unsigned total; // total must be larger than int to hold 4 900 000 000
 
 /* a reusable counter barrier */
 void Barrier()
@@ -118,10 +111,6 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&barrier, NULL);
 	pthread_cond_init(&go, NULL);
 
-	// my work - initialize mutexes
-	pthread_mutex_init(&mutex_localMax, NULL);
-	pthread_mutex_init(&mutex_localMin, NULL);
-
 	/* read command line args if any */
 	size = (argc > 1) ? atoi(argv[1]) : MAXSIZE;
 	numWorkers = (argc > 2) ? atoi(argv[2]) : MAXWORKERS;
@@ -144,7 +133,7 @@ int main(int argc, char *argv[])
 	}
 
 	// testing
-	//matrix[6][16] = 150;
+	// matrix[6][16] = 150;
 
 	/* print the matrix */
 #ifdef DEBUG
@@ -163,7 +152,49 @@ int main(int argc, char *argv[])
 	start_time = read_timer();
 	for (l = 0; l < numWorkers; l++)
 		pthread_create(&workerid[l], &attr, Worker, (void *)l);
-	pthread_exit(NULL);
+
+	// my work - terminating the threads to avoid using barrier function for b)
+	for (i = 0; i < numWorkers; i++)
+		pthread_join(workerid[i], NULL);
+	total = 0;
+
+	// moved printing to the main thread for b)
+	
+	for (i = 0; i < numWorkers; i++)
+		// printf("sums: %d \n", sums[i]);
+		total += sums[i];
+	/* get end time */
+	end_time = read_timer();
+	/* print results */
+	printf("The total is %llu\n", total); // using %llu instead of %d because total is long long unsigned
+	printf("The execution time is %g sec\n", end_time - start_time);
+
+	// my work
+
+	for (int i = 0; i < numWorkers; i++)
+	{
+		if (globalMax < localMax[i][0])
+		{
+			globalMax = localMax[i][0];
+			gMaxPosX = localMax[i][1];
+			gMaxPosY = localMax[i][2];
+		}
+
+		if (globalMin > localMin[i][0])
+		{
+			globalMin = localMin[i][0];
+			gMinPosX = localMin[i][1];
+			gMinPosY = localMin[i][2];
+		}
+	}
+
+	printf("The maximum value is %d, found in array position [%d][%d] \n", globalMax, gMaxPosX, gMaxPosY);
+
+	printf("The minimum value is %d, found in array position [%d][%d] \n", globalMin, gMinPosX, gMinPosY);
+
+	printf("test case: %d \n", matrix[6][16]);
+
+	pthread_exit(NULL); // or should pthread exit be here?
 }
 
 /* Each worker sums the values in one strip of the matrix.
@@ -172,7 +203,6 @@ void *Worker(void *arg)
 {
 	long myid = (long)arg;
 	int i, j, first, last;
-	int total;
 #ifdef DEBUG
 	printf("worker %d (pthread id %d) has started\n", myid, pthread_self());
 #endif
@@ -225,64 +255,17 @@ void *Worker(void *arg)
 	}
 
 	// my work
-	pthread_mutex_lock(&mutex_localMax);
 	localMax[myid][0] = max;
 	localMax[myid][1] = maxPosX;
 	localMax[myid][2] = maxPosY;
-	pthread_mutex_unlock(&mutex_localMax);
 
-	pthread_mutex_lock(&mutex_localMin);
 	localMin[myid][0] = min;
 	localMin[myid][1] = minPosX;
 	localMin[myid][2] = minPosY;
-	pthread_mutex_unlock(&mutex_localMin);
 	// end my work
 
 	// printf("total: %d \n", total);
 	sums[myid] = total;
-	Barrier();
-	if (myid == 0)
-	{
-		total = 0;
-		for (i = 0; i < numWorkers; i++)
-			// printf("sums: %d \n", sums[i]);
-			total += sums[i];
-		/* get end time */
-		end_time = read_timer();
-		/* print results */
-		printf("The total is %d\n", total);
-		printf("The execution time is %g sec\n", end_time - start_time);
 
-		// my work
-
-		printf("Finding maximum value...\n");
-
-		for (int i = 0; i < numWorkers; i++)
-		{
-			if (globalMax < localMax[i][0])
-			{
-				globalMax = localMax[i][0];
-				gMaxPosX = localMax[i][1];
-				gMaxPosY = localMax[i][2];
-			}
-		}
-
-		printf("The maximum value is %d, found in array position [%d][%d] \n", globalMax, gMaxPosX, gMaxPosY);
-
-		printf("Finding minimum value...\n");
-
-		for (int i = 0; i < numWorkers; i++)
-		{
-			if (globalMin > localMin[i][0])
-			{
-				globalMin = localMin[i][0];
-				gMinPosX = localMin[i][1];
-				gMinPosY = localMin[i][2];
-			}
-		}
-
-		printf("The minimum value is %d, found in array position [%d][%d] \n", globalMin, gMinPosX, gMinPosY);
-
-		printf("test case: %d \n", matrix[6][16]);
-	}
+	// Barrier(); do not use the barrier for b)
 }
