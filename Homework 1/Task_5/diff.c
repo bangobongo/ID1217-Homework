@@ -8,9 +8,12 @@
 #include <time.h>
 #include <string.h>
 #include <sys/time.h>
-#define MAXWORKERS 8  /* maximum number of workers */
+#define MAXWORKERS 12  /* maximum number of workers */
 #define MAXLINELENGTH 1000 // Maximum number of chars in a line
-#define MAXFILELINES 30000 // Maximum number of lines in a file
+#define MAXFILELINES 100000 // Maximum number of lines in a file
+
+double start_time;
+double end_time;
 
 char** file_1_lines;
 char** file_2_lines;
@@ -107,19 +110,18 @@ void *line_compare_worker(void *arg)
             }
         }
     }
-    
-
-    
 }
 
 int main(int argc, char *argv[])
 {
+    
     char* filename1 = argv[1];
     char* filename2 = argv[2];
 
     file_1_lines = malloc(MAXFILELINES*sizeof(char*));
     file_2_lines = malloc(MAXFILELINES*sizeof(char*));
 
+    double start_time = read_timer();
     // Creates 2 threads to read one file each, handles errors
     if(pthread_create( &thread1, NULL, read_file, filename1) != 0)
     {
@@ -135,22 +137,26 @@ int main(int argc, char *argv[])
     // Wait for threads to finish
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
+    double end_time = read_timer();
+    printf("Completed read in %f sec\n", end_time-start_time);
 
-    int shortest_file_length, longest_file_length, longest_file;
+    int shortest_file_length, longest_file_length, longest_file, shortest_file;
     if(file_1_number_of_lines < file_2_number_of_lines)
     {
         shortest_file_length = file_1_number_of_lines;
         longest_file_length = file_2_number_of_lines;
         longest_file = 2;
+        shortest_file = 1;
     } 
     else
     {
         shortest_file_length = file_2_number_of_lines;
         longest_file_length = file_1_number_of_lines;
         longest_file = 1;
+        shortest_file = 2;
     }
-    printf("Shortest file: , length: %d\n", shortest_file_length);
-    printf("Longest file: %d, length: %d\n", longest_file, longest_file_length);
+    printf("Shortest file: %d, lines: %d\n", shortest_file, shortest_file_length);
+    printf("Longest file: %d, lines: %d\n", longest_file, longest_file_length);
 
     int *valid_lines = malloc(shortest_file_length*sizeof(int));
 
@@ -162,6 +168,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    start_time = read_timer();
     // Create worker threads
     for (int i = 0; i < MAXWORKERS; i++) 
     {
@@ -171,6 +178,11 @@ int main(int argc, char *argv[])
             perror("Failed to create thread");
             return 1;
         }
+        else
+        {
+            // Check how many threads are created
+            // printf("Created thread %d\n", i);
+        }
     }
 
     // Wait for all threads to finish
@@ -178,12 +190,15 @@ int main(int argc, char *argv[])
     {
         pthread_join(threads[i], NULL);
     }
+    end_time = read_timer();
+    double comparison_time = end_time-start_time;
+    printf("Completed comparison in %f sec\n", comparison_time);
 
     // Destroy the mutex
     pthread_mutex_destroy(&mutex);
 
     // A lot of if statements for neat text formatting
-    for(int i = 0; i < shortest_file_length; i++)
+    /* for(int i = 0; i < shortest_file_length; i++)
     {
         if(!valid_lines[i])
         {
@@ -227,11 +242,7 @@ int main(int argc, char *argv[])
                 printf("\n");
             }
         }
-    }
-    
-
-
-    printf("Both files have been read.\n");
+    } */
 
     free(file_1_lines);
     free(file_2_lines);
