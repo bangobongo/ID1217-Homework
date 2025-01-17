@@ -10,7 +10,7 @@
 #include <sys/time.h>
 #define MAXWORKERS 8  /* maximum number of workers */
 #define MAXLINELENGTH 1000 // Maximum number of chars in a line
-#define MAXFILELINES 10000 // Maximum number of lines in a file
+#define MAXFILELINES 30000 // Maximum number of lines in a file
 
 char** file_1_lines;
 char** file_2_lines;
@@ -149,6 +149,8 @@ int main(int argc, char *argv[])
         longest_file_length = file_1_number_of_lines;
         longest_file = 1;
     }
+    printf("Shortest file: , length: %d\n", shortest_file_length);
+    printf("Longest file: %d, length: %d\n", longest_file, longest_file_length);
 
     int *valid_lines = malloc(shortest_file_length*sizeof(int));
 
@@ -207,7 +209,7 @@ int main(int argc, char *argv[])
     // if statements for neat text formatting
     for(int i = shortest_file_length; i < longest_file_length; i++)
     {
-        if(longest_file = 1)
+        if(longest_file == 1)
         {
             printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
             if(longest_file_length-1 == i)
@@ -216,7 +218,7 @@ int main(int argc, char *argv[])
             }
             printf("%s line %d: > \n", filename2, i+1);
         }
-        else
+        else if(longest_file == 2)
         {
             printf("%s line %d: < \n", filename1, i+1);
             printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
