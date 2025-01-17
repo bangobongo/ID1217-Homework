@@ -55,8 +55,6 @@ void *read_file(void* arg)
     char *filename = (char*)arg;
     FILE *file = fopen(filename, "r");
 
-    printf("Reading file: %s\n", filename);
-
     int number_of_lines;
 
     if (pthread_equal(thread1, pthread_self())) 
@@ -122,8 +120,6 @@ int main(int argc, char *argv[])
     file_1_lines = malloc(MAXFILELINES*sizeof(char*));
     file_2_lines = malloc(MAXFILELINES*sizeof(char*));
 
-    printf("Starting...\n");
-
     // Creates 2 threads to read one file each, handles errors
     if(pthread_create( &thread1, NULL, read_file, filename1) != 0)
     {
@@ -184,26 +180,50 @@ int main(int argc, char *argv[])
     // Destroy the mutex
     pthread_mutex_destroy(&mutex);
 
+    // A lot of if statements for neat text formatting
     for(int i = 0; i < shortest_file_length; i++)
     {
         if(!valid_lines[i])
         {
-            printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
-            printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
+            if(shortest_file_length-1 == i && longest_file == 1)
+            {
+                printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
+                printf("%s line %d: > %s\n", filename2, i+1, file_2_lines[i]);
+            }
+            else if (shortest_file_length-1 == i && longest_file == 2)
+            {
+                printf("%s line %d: < %s\n", filename1, i+1, file_1_lines[i]);
+                printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
+            }
+            else
+            {
+                printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
+                printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
+            }
+            
         }
     }
 
+    // if statements for neat text formatting
     for(int i = shortest_file_length; i < longest_file_length; i++)
     {
         if(longest_file = 1)
         {
-            printf("%s line %d: < %s\n", filename1, i+1, file_1_lines[i]);
+            printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
+            if(longest_file_length-1 == i)
+            {
+                printf("\n");
+            }
             printf("%s line %d: > \n", filename2, i+1);
         }
         else
         {
             printf("%s line %d: < \n", filename1, i+1);
-            printf("%s line %d: > %s\n", filename2, i+1, file_2_lines[i]);
+            printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
+            if(longest_file_length-1 == i)
+            {
+                printf("\n");
+            }
         }
     }
     
