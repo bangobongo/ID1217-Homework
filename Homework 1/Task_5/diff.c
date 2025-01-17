@@ -20,6 +20,9 @@ int file_2_number_of_lines;
 
 pthread_t thread1, thread2;
 
+pthread_mutex_t mutex;
+int line_index = 0;
+
 /* timer */
 double read_timer()
 {
@@ -70,13 +73,45 @@ void *read_file(void* arg)
 }
 
 typedef struct {
-    int line;
     int *valid_lines;
+    int shortest_file_length;
 } line_compare_data;
 
 void *line_compare_worker(void *arg)
 {
+    line_compare_data *data = (line_compare_data*)arg;
+    int *valid_lines = data->valid_lines;
+    int min_nr_of_lines = data->shortest_file_length;
+    while(1)
+    {
+        pthread_mutex_lock(&mutex);
 
+        int line;
+        if (line_index < min_nr_of_lines) {
+            // lines still left to process
+            line = line_index++;
+            pthread_mutex_unlock(&mutex);
+        } else {
+            // no lines left
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
+
+        for(int i = 0; i < MAXLINELENGTH; i++)
+        {
+            if(strcmp(file_1_lines[line], file_2_lines[line]) != 0)
+            {
+                valid_lines[line] = 0;
+            }
+            else
+            {
+                valid_lines[line] = 1;
+            }
+        }
+    }
+    
+
+    
 }
 
 int main(int argc, char *argv[])
@@ -105,13 +140,72 @@ int main(int argc, char *argv[])
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
 
-    int *valid_lines = malloc(MAXFILELINES*sizeof(int));
-
-    /* for(int i = 0; i < 3; i++)
+    int shortest_file_length, longest_file_length, longest_file;
+    if(file_1_number_of_lines < file_2_number_of_lines)
     {
-        printf("File 1 line %d: %s", i, file_1_lines[i]);
-        printf("File 2 line %d: %s", i, file_2_lines[i]);
-    } */
+        shortest_file_length = file_1_number_of_lines;
+        longest_file_length = file_2_number_of_lines;
+        longest_file = 2;
+    } 
+    else
+    {
+        shortest_file_length = file_2_number_of_lines;
+        longest_file_length = file_1_number_of_lines;
+        longest_file = 1;
+    }
+
+    int *valid_lines = malloc(shortest_file_length*sizeof(int));
+
+    pthread_t threads[MAXWORKERS];
+
+    // Initialize the mutex
+    if (pthread_mutex_init(&mutex, NULL) != 0) {
+        perror("Mutex initialization failed");
+        return 1;
+    }
+
+    // Create worker threads
+    for (int i = 0; i < MAXWORKERS; i++) 
+    {
+        line_compare_data data = {valid_lines, shortest_file_length};
+        if (pthread_create(&threads[i], NULL, line_compare_worker, &data) != 0) 
+        {
+            perror("Failed to create thread");
+            return 1;
+        }
+    }
+
+    // Wait for all threads to finish
+    for (int i = 0; i < MAXWORKERS; i++) 
+    {
+        pthread_join(threads[i], NULL);
+    }
+
+    // Destroy the mutex
+    pthread_mutex_destroy(&mutex);
+
+    for(int i = 0; i < shortest_file_length; i++)
+    {
+        if(!valid_lines[i])
+        {
+            printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
+            printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
+        }
+    }
+
+    for(int i = shortest_file_length; i < longest_file_length; i++)
+    {
+        if(longest_file = 1)
+        {
+            printf("%s line %d: < %s\n", filename1, i+1, file_1_lines[i]);
+            printf("%s line %d: > \n", filename2, i+1);
+        }
+        else
+        {
+            printf("%s line %d: < \n", filename1, i+1);
+            printf("%s line %d: > %s\n", filename2, i+1, file_2_lines[i]);
+        }
+    }
     
 
 
@@ -119,6 +213,7 @@ int main(int argc, char *argv[])
 
     free(file_1_lines);
     free(file_2_lines);
+    free(valid_lines);
 
     return 0;
 
