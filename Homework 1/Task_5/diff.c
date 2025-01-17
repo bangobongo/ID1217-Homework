@@ -6,12 +6,17 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include <string.h>
 #include <sys/time.h>
 #define MAXWORKERS 8  /* maximum number of workers */
+#define MAXLINELENGTH 1000 // Maximum number of chars in a line
 #define MAXFILELINES 10000 // Maximum number of lines in a file
 
-char* file_1_lines[MAXFILELINES];
-char* file_2_lines[MAXFILELINES];
+char** file_1_lines;
+char** file_2_lines;
+
+int file_1_number_of_lines;
+int file_2_number_of_lines;
 
 pthread_t thread1, thread2;
 
@@ -30,6 +35,18 @@ double read_timer()
 	return (end.tv_sec - start.tv_sec) + 1.0e-6 * (end.tv_usec - start.tv_usec);
 }
 
+int read_lines(char **file_lines, FILE *file) {
+    int number_of_lines = 0;
+    char buffer[MAXLINELENGTH];
+
+    while (fgets(buffer, sizeof(buffer), file) != NULL) 
+    {
+        file_lines[number_of_lines++] = strdup(buffer);
+    }
+
+    return number_of_lines;
+}
+
 void *read_file(void* arg)
 {
     char *filename = (char*)arg;
@@ -37,36 +54,29 @@ void *read_file(void* arg)
 
     printf("Reading file: %s\n", filename);
 
-    int buffer_size = 2048;
+    int number_of_lines;
 
-    char buffer[buffer_size];
-
-    int number_of_lines = 0;
-    char **lines;
-
-    if(pthread_equal(thread1, pthread_self()))
+    if (pthread_equal(thread1, pthread_self())) 
     {
-        while (fgets(buffer, sizeof(buffer), file) != NULL) {
-            file_1_lines[number_of_lines++] = buffer;
-        }
+        file_1_number_of_lines = read_lines(file_1_lines, file);
     }
-    else if (pthread_equal(thread2, pthread_self()))
+    else 
     {
-        while (fgets(buffer, sizeof(buffer), file) != NULL) {
-            file_2_lines[number_of_lines++] = buffer;
-        }
+        file_2_number_of_lines = read_lines(file_2_lines, file);
     }
-
-    
-
-    
-
-    
-
-    printf("%d lines in %s\n", number_of_lines, filename);
 
     fclose(file);
     pthread_exit(NULL);
+}
+
+typedef struct {
+    int line;
+    int *valid_lines;
+} line_compare_data;
+
+void *line_compare_worker(void *arg)
+{
+
 }
 
 int main(int argc, char *argv[])
@@ -74,8 +84,12 @@ int main(int argc, char *argv[])
     char* filename1 = argv[1];
     char* filename2 = argv[2];
 
+    file_1_lines = malloc(MAXFILELINES*sizeof(char*));
+    file_2_lines = malloc(MAXFILELINES*sizeof(char*));
+
     printf("Starting...\n");
 
+    // Creates 2 threads to read one file each, handles errors
     if(pthread_create( &thread1, NULL, read_file, filename1) != 0)
     {
         perror("Failed to create thread 1");
@@ -87,12 +101,25 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-
     // Wait for threads to finish
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
 
+    int *valid_lines = malloc(MAXFILELINES*sizeof(int));
+
+    /* for(int i = 0; i < 3; i++)
+    {
+        printf("File 1 line %d: %s", i, file_1_lines[i]);
+        printf("File 2 line %d: %s", i, file_2_lines[i]);
+    } */
+    
+
+
     printf("Both files have been read.\n");
+
+    free(file_1_lines);
+    free(file_2_lines);
+
     return 0;
 
 }
