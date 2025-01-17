@@ -1,0 +1,78 @@
+#ifndef _REENTRANT
+#define _REENTRANT
+#endif
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <time.h>
+#include <sys/time.h>
+#define MAXWORKERS 8  /* maximum number of workers */
+
+
+/* timer */
+double read_timer()
+{
+	static bool initialized = false;
+	static struct timeval start;
+	struct timeval end;
+	if (!initialized)
+	{
+		gettimeofday(&start, NULL);
+		initialized = true;
+	}
+	gettimeofday(&end, NULL);
+	return (end.tv_sec - start.tv_sec) + 1.0e-6 * (end.tv_usec - start.tv_usec);
+}
+
+void *read_file(void* arg)
+{
+    char *filename = (char*)arg;
+    FILE *file = fopen(filename, "r");
+
+    char buffer[2048];
+
+    printf("Reading file: %s\n", filename);
+
+    fclose(file);
+    pthread_exit(NULL);
+}
+
+int main(int argc, char *argv[])
+{
+
+    char* filename1 = argv[1];
+    char* filename2 = argv[2];
+
+    printf("\nFile 1: %s", filename1);
+    printf("\nFile 2: %s", filename2);
+
+    if(filename1 == "" || filename2 == "")
+    {
+        printf("Input both filenames");
+        return 1;
+    }
+
+    pthread_t thread1, thread2;
+    
+
+    if(pthread_create( &thread1, NULL, read_file, filename1) != 0)
+    {
+        perror("Failed to create thread 1");
+        return 1;
+    }
+    if(pthread_create( &thread2, NULL, read_file, filename2) != 0)
+    {
+        perror("Failed to create thread 2");
+        return 1;
+    }
+
+
+    // Wait for threads to finish
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+
+    printf("Both files have been read.\n");
+    return 0;
+
+}
