@@ -8,7 +8,12 @@
 #include <time.h>
 #include <sys/time.h>
 #define MAXWORKERS 8  /* maximum number of workers */
+#define MAXFILELINES 10000 // Maximum number of lines in a file
 
+char* file_1_lines[MAXFILELINES];
+char* file_2_lines[MAXFILELINES];
+
+pthread_t thread1, thread2;
 
 /* timer */
 double read_timer()
@@ -30,9 +35,35 @@ void *read_file(void* arg)
     char *filename = (char*)arg;
     FILE *file = fopen(filename, "r");
 
-    char buffer[2048];
-
     printf("Reading file: %s\n", filename);
+
+    int buffer_size = 2048;
+
+    char buffer[buffer_size];
+
+    int number_of_lines = 0;
+    char **lines;
+
+    if(pthread_equal(thread1, pthread_self()))
+    {
+        while (fgets(buffer, sizeof(buffer), file) != NULL) {
+            file_1_lines[number_of_lines++] = buffer;
+        }
+    }
+    else if (pthread_equal(thread2, pthread_self()))
+    {
+        while (fgets(buffer, sizeof(buffer), file) != NULL) {
+            file_2_lines[number_of_lines++] = buffer;
+        }
+    }
+
+    
+
+    
+
+    
+
+    printf("%d lines in %s\n", number_of_lines, filename);
 
     fclose(file);
     pthread_exit(NULL);
@@ -40,21 +71,10 @@ void *read_file(void* arg)
 
 int main(int argc, char *argv[])
 {
-
     char* filename1 = argv[1];
     char* filename2 = argv[2];
 
-    printf("\nFile 1: %s", filename1);
-    printf("\nFile 2: %s", filename2);
-
-    if(filename1 == "" || filename2 == "")
-    {
-        printf("Input both filenames");
-        return 1;
-    }
-
-    pthread_t thread1, thread2;
-    
+    printf("Starting...\n");
 
     if(pthread_create( &thread1, NULL, read_file, filename1) != 0)
     {
