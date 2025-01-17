@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 
 	printf("test case: %d \n", matrix[6][16]);
 
-	pthread_exit(NULL); // or should pthread exit be here?
+	return 0;
 }
 
 /* Each worker sums the values in one strip of the matrix.
