@@ -8,9 +8,14 @@
 #include <time.h>
 #include <string.h>
 #include <sys/time.h>
-#define MAXWORKERS 12  /* maximum number of workers */
+#define MAXWORKERS 1  /* maximum number of workers */
 #define MAXLINELENGTH 1000 // Maximum number of chars in a line
 #define MAXFILELINES 100000 // Maximum number of lines in a file
+
+typedef struct {
+    int *valid_lines;
+    int shortest_file_length;
+} line_compare_data;
 
 double start_time;
 double end_time;
@@ -72,11 +77,6 @@ void *read_file(void* arg)
     fclose(file);
     pthread_exit(NULL);
 }
-
-typedef struct {
-    int *valid_lines;
-    int shortest_file_length;
-} line_compare_data;
 
 void *line_compare_worker(void *arg)
 {
@@ -148,12 +148,19 @@ int main(int argc, char *argv[])
         longest_file = 2;
         shortest_file = 1;
     } 
-    else
+    else if (file_1_number_of_lines > file_2_number_of_lines)
     {
         shortest_file_length = file_2_number_of_lines;
         longest_file_length = file_1_number_of_lines;
         longest_file = 1;
         shortest_file = 2;
+    }
+    else
+    {
+        shortest_file_length = file_1_number_of_lines;
+        longest_file_length = file_2_number_of_lines;
+        longest_file = 2;
+        shortest_file = 1;
     }
     printf("Shortest file: %d, lines: %d\n", shortest_file, shortest_file_length);
     printf("Longest file: %d, lines: %d\n", longest_file, longest_file_length);
@@ -198,7 +205,7 @@ int main(int argc, char *argv[])
     pthread_mutex_destroy(&mutex);
 
     // A lot of if statements for neat text formatting
-    /* for(int i = 0; i < shortest_file_length; i++)
+    for(int i = 0; i < shortest_file_length; i++)
     {
         if(!valid_lines[i])
         {
@@ -242,7 +249,7 @@ int main(int argc, char *argv[])
                 printf("\n");
             }
         }
-    } */
+    }
 
     free(file_1_lines);
     free(file_2_lines);
