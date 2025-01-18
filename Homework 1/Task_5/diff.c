@@ -8,7 +8,7 @@
 #include <time.h>
 #include <string.h>
 #include <sys/time.h>
-#define MAXWORKERS 1  /* maximum number of workers */
+#define MAXWORKERS 12 /* maximum number of workers */
 #define MAXLINELENGTH 1000 // Maximum number of chars in a line
 #define MAXFILELINES 100000 // Maximum number of lines in a file
 
@@ -26,24 +26,10 @@ char** file_2_lines;
 int file_1_number_of_lines;
 int file_2_number_of_lines;
 
-pthread_t thread1, thread2;
+pthread_t threads[MAXWORKERS];
 
 pthread_mutex_t mutex;
 int line_index = 0;
-
-void Barrier()
-{
-	pthread_mutex_lock(&barrier);
-	numArrived++;
-	if (numArrived == numWorkers)
-	{
-		numArrived = 0;
-		pthread_cond_broadcast(&go);
-	}
-	else
-		pthread_cond_wait(&go, &barrier);
-	pthread_mutex_unlock(&barrier);
-}
 
 /* timer */
 double read_timer()
@@ -72,14 +58,14 @@ int read_lines(char **file_lines, FILE *file) {
     return number_of_lines;
 }
 
-void *read_file(void *arg)
+void *read_file_worker(void *arg)
 {
     char *filename = (char*)arg;
     FILE *file = fopen(filename, "r");
 
     int number_of_lines;
 
-    if (pthread_equal(thread1, pthread_self())) 
+    if (pthread_equal(threads[0], pthread_self())) 
     {
         file_1_number_of_lines = read_lines(file_1_lines, file);
     }
@@ -87,9 +73,7 @@ void *read_file(void *arg)
     {
         file_2_number_of_lines = read_lines(file_2_lines, file);
     }
-
     fclose(file);
-    pthread_exit(NULL);
 }
 
 void *line_compare_worker(void *arg)
@@ -135,25 +119,21 @@ int main(int argc, char *argv[])
     file_2_lines = malloc(MAXFILELINES*sizeof(char*));
 
     double start_time = read_timer();
-    // Creates 2 threads to read one file each, handles errors
-    if(pthread_create( &thread1, NULL, read_file, filename1) != 0)
-    {
-        perror("Failed to create thread 1");
-        return 1;
-    }
-    if(pthread_create( &thread2, NULL, read_file, filename2) != 0)
-    {
-        perror("Failed to create thread 2");
-        return 1;
-    }
+
+    // Creates 2 threads to read one file each
+    pthread_create( &threads[0], NULL, read_file_worker, filename1);
+    pthread_create( &threads[1], NULL, read_file_worker, filename2);
 
     // Wait for threads to finish
-    pthread_join(thread1, NULL);
-    pthread_join(thread2, NULL);
+    pthread_join(threads[0], NULL);
+    pthread_join(threads[1], NULL);
+
     double end_time = read_timer();
+    
     printf("Completed read in %f sec\n", end_time-start_time);
 
     int shortest_file_length, longest_file_length, longest_file, shortest_file;
+    
     if(file_1_number_of_lines < file_2_number_of_lines)
     {
         shortest_file_length = file_1_number_of_lines;
@@ -175,18 +155,11 @@ int main(int argc, char *argv[])
         longest_file = 2;
         shortest_file = 1;
     }
-    printf("Shortest file: %d, lines: %d\n", shortest_file, shortest_file_length);
-    printf("Longest file: %d, lines: %d\n", longest_file, longest_file_length);
 
-    int *valid_lines = malloc(shortest_file_length*sizeof(int));
-
-    pthread_t threads[MAXWORKERS];
+    int *valid_lines = malloc(shortest_file_length*sizeof(int)); 
 
     // Initialize the mutex
-    if (pthread_mutex_init(&mutex, NULL) != 0) {
-        perror("Mutex initialization failed");
-        return 1;
-    }
+    pthread_mutex_init(&mutex, NULL);
 
     start_time = read_timer();
     // Create worker threads
@@ -197,11 +170,6 @@ int main(int argc, char *argv[])
         {
             perror("Failed to create thread");
             return 1;
-        }
-        else
-        {
-            // Check how many threads are created
-            // printf("Created thread %d\n", i);
         }
     }
 
