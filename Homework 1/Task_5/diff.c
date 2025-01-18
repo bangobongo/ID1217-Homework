@@ -1,6 +1,17 @@
-#ifndef _REENTRANT
-#define _REENTRANT
-#endif
+/*
+    This C program compares 2 .txt files, and prints all lines that are different between them.
+
+    The read of the files is always done with 2 threads, 1 for each file.
+
+    The line comparison is done with MAXWORKERS threads.
+
+    One anomaly observed when testing the speedup, is for small file sizes (a few thousand lines), 
+    it is faster with 1 thread than several (tested with 4, 8 and 12 threads) this is presumably due
+    to extra overhead creating new threads as compared to "just getting on with the work". For larger files,
+
+*/
+
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -133,7 +144,7 @@ int main(int argc, char *argv[])
     printf("Completed read in %f sec\n", end_time-start_time);
 
     int shortest_file_length, longest_file_length, longest_file, shortest_file;
-    
+
     if(file_1_number_of_lines < file_2_number_of_lines)
     {
         shortest_file_length = file_1_number_of_lines;
@@ -166,11 +177,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < MAXWORKERS; i++) 
     {
         line_compare_data data = {valid_lines, shortest_file_length};
-        if (pthread_create(&threads[i], NULL, line_compare_worker, &data) != 0) 
-        {
-            perror("Failed to create thread");
-            return 1;
-        }
+        pthread_create(&threads[i], NULL, line_compare_worker, &data);
     }
 
     // Wait for all threads to finish
@@ -185,7 +192,8 @@ int main(int argc, char *argv[])
     // Destroy the mutex
     pthread_mutex_destroy(&mutex);
 
-    // A lot of if statements for neat text formatting
+    // A lot of if statements for neat text formatting, this could be better,
+    // but is not the point of the task
     for(int i = 0; i < shortest_file_length; i++)
     {
         if(!valid_lines[i])
@@ -232,10 +240,10 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Free allocated pointers
     free(file_1_lines);
     free(file_2_lines);
     free(valid_lines);
 
     return 0;
-
 }
