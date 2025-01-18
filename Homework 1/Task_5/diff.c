@@ -1,5 +1,8 @@
 /*
-    This C program compares 2 .txt files, and prints all lines that are different between them.
+    This C program compares 2 text files, and prints all lines that are different between them.
+
+    example usage in terminal:
+        diff file1.txt file2.txt
 
     The read of the files is always done with 2 threads, 1 for each file.
 
@@ -213,7 +216,6 @@ int main(int argc, char *argv[])
                 printf("%s line %d: < %s", filename1, i+1, file_1_lines[i]);
                 printf("%s line %d: > %s", filename2, i+1, file_2_lines[i]);
             }
-            
         }
     }
 
