@@ -31,6 +31,20 @@ pthread_t thread1, thread2;
 pthread_mutex_t mutex;
 int line_index = 0;
 
+void Barrier()
+{
+	pthread_mutex_lock(&barrier);
+	numArrived++;
+	if (numArrived == numWorkers)
+	{
+		numArrived = 0;
+		pthread_cond_broadcast(&go);
+	}
+	else
+		pthread_cond_wait(&go, &barrier);
+	pthread_mutex_unlock(&barrier);
+}
+
 /* timer */
 double read_timer()
 {
@@ -58,7 +72,7 @@ int read_lines(char **file_lines, FILE *file) {
     return number_of_lines;
 }
 
-void *read_file(void* arg)
+void *read_file(void *arg)
 {
     char *filename = (char*)arg;
     FILE *file = fopen(filename, "r");
@@ -113,8 +127,7 @@ void *line_compare_worker(void *arg)
 }
 
 int main(int argc, char *argv[])
-{
-    
+{ 
     char* filename1 = argv[1];
     char* filename2 = argv[2];
 
