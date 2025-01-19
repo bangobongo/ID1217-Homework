@@ -10,7 +10,10 @@
 
     One anomaly observed when testing the speedup, is for small file sizes (a few thousand lines), 
     it is faster with 1 thread than several (tested with 4, 8 and 12 threads) this is presumably due
-    to extra overhead creating new threads as compared to "just getting on with the work". For larger files,
+    to extra overhead creating new threads as compared to "just getting on with the work". 
+    
+    It could also be due to false sharing since we are using a shared array to keep track of the valid_lines array
+    in order to keep track of valid lines, since threads might be accessing the same memory blocks in cache.
 
 */
 
@@ -29,6 +32,7 @@
 typedef struct {
     int *valid_lines;
     int shortest_file_length;
+    int thread_id;
 } line_compare_data;
 
 double start_time;
@@ -170,7 +174,7 @@ int main(int argc, char *argv[])
         shortest_file = 1;
     }
 
-    int *valid_lines = malloc(shortest_file_length*sizeof(int)); 
+    int *valid_lines = malloc(shortest_file_length*sizeof(int));
 
     // Initialize the mutex
     pthread_mutex_init(&mutex, NULL);
@@ -179,7 +183,8 @@ int main(int argc, char *argv[])
     // Create worker threads
     for (int i = 0; i < MAXWORKERS; i++) 
     {
-        line_compare_data data = {valid_lines, shortest_file_length};
+        int thread_id = i;
+        line_compare_data data = {valid_lines, shortest_file_length, thread_id};
         pthread_create(&threads[i], NULL, line_compare_worker, &data);
     }
 
