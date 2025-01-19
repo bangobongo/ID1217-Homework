@@ -24,6 +24,7 @@
 #include <time.h>
 #include <string.h>
 #include <sys/time.h>
+
 #define MAXWORKERS 12      /* maximum number of workers */
 #define MAXLINELENGTH 1000  // Maximum number of chars in a line
 #define MAXFILELINES 100000 // Maximum number of lines in a file
@@ -63,6 +64,64 @@ double read_timer()
     }
     gettimeofday(&end, NULL);
     return (end.tv_sec - start.tv_sec) + 1.0e-6 * (end.tv_usec - start.tv_usec);
+}
+
+void print_valid_lines(int* valid_lines, int file_length)
+{
+    for(int i = 0; i < file_length; i++)
+    {
+        printf("valid lines %d: %d\n", i, valid_lines[i]);
+    }
+}
+
+void print_diff(int s_file_length, int l_file_length, int s_file, int l_file, char *filename1, char *filename2, int *valid_lines)
+{
+    // A lot of if statements for neat text formatting, this could be better,
+    // but is not the point of the task
+    for (int i = 0; i < s_file_length; i++)
+    {
+        if (!valid_lines[i])
+        {
+            if (s_file_length - 1 == i && l_file == 1)
+            {
+                printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
+                printf("%s line %d: > %s\n", filename2, i + 1, file_2_lines[i]);
+            }
+            else if (s_file_length - 1 == i && l_file == 2)
+            {
+                printf("%s line %d: < %s\n", filename1, i + 1, file_1_lines[i]);
+                printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
+            }
+            else
+            {
+                printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
+                printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
+            }
+        }
+    }
+
+    // if statements for neat text formatting
+    for (int i = s_file_length; i < l_file_length; i++)
+    {
+        if (l_file == 1)
+        {
+            printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
+            if (l_file_length - 1 == i)
+            {
+                printf("\n");
+            }
+            printf("%s line %d: > \n", filename2, i + 1);
+        }
+        else if (l_file == 2)
+        {
+            printf("%s line %d: < \n", filename1, i + 1);
+            printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
+            if (l_file_length - 1 == i)
+            {
+                printf("\n");
+            }
+        }
+    }
 }
 
 int read_lines(char **file_lines, FILE *file)
@@ -139,8 +198,7 @@ int main(int argc, char *argv[])
     pthread_join(threads[1], NULL);
 
     double end_time = read_timer();
-
-    printf("Completed read in %f sec\n", end_time - start_time);
+    double read_time = end_time - start_time;
 
     int shortest_file_length, longest_file_length, longest_file, shortest_file;
 
@@ -219,59 +277,21 @@ int main(int argc, char *argv[])
     }
     end_time = read_timer();
     double comparison_time = end_time - start_time;
-    printf("Completed comparison in %f sec\n", comparison_time);
 
-    // A lot of if statements for neat text formatting, this could be better,
-    // but is not the point of the task
-    for (int i = 0; i < shortest_file_length; i++)
-    {
-        if (!valid_lines[i])
-        {
-            if (shortest_file_length - 1 == i && longest_file == 1)
-            {
-                printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
-                printf("%s line %d: > %s\n", filename2, i + 1, file_2_lines[i]);
-            }
-            else if (shortest_file_length - 1 == i && longest_file == 2)
-            {
-                printf("%s line %d: < %s\n", filename1, i + 1, file_1_lines[i]);
-                printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
-            }
-            else
-            {
-                printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
-                printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
-            }
-        }
-    }
+    // Prints the desired ouput for the task, 
+    print_diff( 
+                shortest_file_length, 
+                longest_file_length, 
+                shortest_file, 
+                longest_file, 
+                filename1, 
+                filename2, 
+                valid_lines
+                );
 
-    // if statements for neat text formatting
-    for (int i = shortest_file_length; i < longest_file_length; i++)
-    {
-        if (longest_file == 1)
-        {
-            printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
-            if (longest_file_length - 1 == i)
-            {
-                printf("\n");
-            }
-            printf("%s line %d: > \n", filename2, i + 1);
-        }
-        else if (longest_file == 2)
-        {
-            printf("%s line %d: < \n", filename1, i + 1);
-            printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
-            if (longest_file_length - 1 == i)
-            {
-                printf("\n");
-            }
-        }
-    }
-
-    for(int i = 0; i < shortest_file_length; i++)
-    {
-        printf("\n valid lines %d: %d", i, valid_lines[i]);
-    }
+    // print_valid_lines(valid_lines, shortest_file_length);
+    printf("\nCompleted comparison in %f sec\n", comparison_time);
+    printf("Completed read in %f sec\n", read_time);
 
     // Free allocated pointers
     free(file_1_lines);
