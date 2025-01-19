@@ -181,6 +181,12 @@ void *line_compare_worker(void *arg)
 
 int main(int argc, char *argv[])
 {
+    pthread_attr_t attr;
+
+    /* set global thread attributes */
+	pthread_attr_init(&attr);
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+
     char *filename1 = argv[1];
     char *filename2 = argv[2];
 
@@ -190,8 +196,8 @@ int main(int argc, char *argv[])
     double start_time = read_timer();
 
     // Creates 2 threads to read one file each
-    pthread_create(&threads[0], NULL, read_file_worker, filename1);
-    pthread_create(&threads[1], NULL, read_file_worker, filename2);
+    pthread_create(&threads[0], &attr, read_file_worker, filename1);
+    pthread_create(&threads[1], &attr, read_file_worker, filename2);
 
     // Wait for threads to finish
     pthread_join(threads[0], NULL);
@@ -267,7 +273,7 @@ int main(int argc, char *argv[])
         
         line_compare_data temp_data = {valid_lines, thread_id, start_line, end_line};
         data[i] = temp_data;
-        pthread_create(&threads[i], NULL, line_compare_worker, &data[i]);
+        pthread_create(&threads[i], &attr, line_compare_worker, &data[i]);
     }
 
     // Wait for all threads to finish
@@ -279,15 +285,14 @@ int main(int argc, char *argv[])
     double comparison_time = end_time - start_time;
 
     // Prints the desired ouput for the task, 
-    print_diff( 
-                shortest_file_length, 
+    /* print_diff( shortest_file_length, 
                 longest_file_length, 
                 shortest_file, 
                 longest_file, 
                 filename1, 
                 filename2, 
                 valid_lines
-                );
+                ); */
 
     // print_valid_lines(valid_lines, shortest_file_length);
     printf("\nCompleted comparison in %f sec\n", comparison_time);
