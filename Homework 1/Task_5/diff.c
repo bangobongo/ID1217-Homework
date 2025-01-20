@@ -189,11 +189,11 @@ void *line_compare_worker(void *arg)
                     file2_partition+(line*MAXLINELENGTH), 
                     sizeof(char)*MAXLINELENGTH) != 0)
         {
-            valid_lines[line] = 0;
+            valid_lines[line+(start_line)] = 0;
         }
         else
         {
-            valid_lines[line] = 1;
+            valid_lines[line+(start_line)] = 1;
         }
         line++;
     }
@@ -210,8 +210,16 @@ int main(int argc, char *argv[])
     char *filename1 = argv[1];
     char *filename2 = argv[2];
 
-    file_1_lines = malloc(MAXFILELINES*MAXLINELENGTH*sizeof(char));
-    file_2_lines = malloc(MAXFILELINES*MAXLINELENGTH*sizeof(char));
+    if(filename1 == NULL || filename2 == NULL)
+    {
+        printf("Please give 2 files as arguments.");
+        return 1;
+    }
+
+    size_t max_file_size = MAXFILELINES*MAXLINELENGTH*sizeof(char);
+
+    file_1_lines = malloc(max_file_size);
+    file_2_lines = malloc(max_file_size);
 
     double start_time = read_timer();
 
@@ -338,6 +346,8 @@ int main(int argc, char *argv[])
     printf("Completed comparison in %f sec\n", comparison_time); 
     
     // Free allocated pointers
+    free(file_1_lines);
+    free(file_2_lines);
     free(valid_lines);
 
     return 0;
