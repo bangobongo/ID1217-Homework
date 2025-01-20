@@ -2,19 +2,33 @@
     This C program compares 2 text files, and prints all lines that are different between them.
 
     example usage in terminal:
+
+        cmd:
         diff file1.txt file2.txt
+
+        powershell:
+        ./diff file1.txt file2.txt 
 
     The read of the files is always done with 2 threads, 1 for each file.
 
     The line comparison is done with MAXWORKERS threads.
 
     One anomaly observed when testing the speedup, is for small file sizes (a few thousand lines),
-    it is faster with 1 thread than several (tested with 4, 8 and 12 threads) this is presumably due
+    it is faster with 1 thread than several (tested with 2, 4, 8 and 12 threads) this is presumably due
     to extra overhead creating new threads as compared to "just getting on with the work".
 
     It could also be due to false sharing since we are using a shared array to keep track of the valid_lines array
     in order to keep track of valid lines, since threads might be accessing the same memory blocks in cache.
 
+    I tried allocating the file_x_lines variables both as char ** and char file_x_lines[][] but both seem
+    to give this slowdown when using several threads with small to medium files (1 to 500k chars).
+
+    a potential solution might be to force to store the chars in contigious memory from different lines,
+    but this is somewhat difficult to do, this should in theory exploit the psoitive effects of the cache and that
+    we now compare partitions of the files for each thread. As of right now I believe only the char pointers are
+    stored contigiously but not the chars that they then point to, this means mem fragmentation and slower
+    access times due to cache misses. But this should cause it to be slow for 1 thread as well, so
+    it is probably not the entire solution.
 */
 
 #include <pthread.h>
@@ -40,8 +54,8 @@ typedef struct
 double start_time;
 double end_time;
 
-char **file_1_lines;
-char **file_2_lines;
+char file_1_lines[MAXFILELINES][MAXLINELENGTH];
+char file_2_lines[MAXFILELINES][MAXLINELENGTH];
 
 int file_1_number_of_lines;
 int file_2_number_of_lines;
@@ -124,14 +138,14 @@ void print_diff(int s_file_length, int l_file_length, int s_file, int l_file, ch
     }
 }
 
-int read_lines(char **file_lines, FILE *file)
+int read_lines(char file_lines[MAXFILELINES][MAXLINELENGTH], FILE *file)
 {
     int number_of_lines = 0;
     char buffer[MAXLINELENGTH];
 
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
-        file_lines[number_of_lines++] = strdup(buffer);
+        strcpy(file_lines[number_of_lines++], buffer);
     }
 
     return number_of_lines;
@@ -189,9 +203,6 @@ int main(int argc, char *argv[])
 
     char *filename1 = argv[1];
     char *filename2 = argv[2];
-
-    file_1_lines = malloc(MAXFILELINES * sizeof(char *));
-    file_2_lines = malloc(MAXFILELINES * sizeof(char *));
 
     double start_time = read_timer();
 
@@ -285,22 +296,20 @@ int main(int argc, char *argv[])
     double comparison_time = end_time - start_time;
 
     // Prints the desired ouput for the task, 
-    /* print_diff( shortest_file_length, 
+    print_diff( shortest_file_length, 
                 longest_file_length, 
                 shortest_file, 
                 longest_file, 
                 filename1, 
                 filename2, 
                 valid_lines
-                ); */
+                );
 
     // print_valid_lines(valid_lines, shortest_file_length);
-    printf("\nCompleted comparison in %f sec\n", comparison_time);
-    printf("Completed read in %f sec\n", read_time);
-
+    printf("\n\nCompleted read in %f sec\n", read_time);
+    printf("Completed comparison in %f sec\n", comparison_time); 
+    
     // Free allocated pointers
-    free(file_1_lines);
-    free(file_2_lines);
     free(valid_lines);
 
     return 0;
