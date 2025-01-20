@@ -49,13 +49,14 @@ typedef struct
     int thread_id;
     int start_line;
     int end_line;
+    char *lines;
 } line_compare_data;
 
 double start_time;
 double end_time;
 
-char file_1_lines[MAXFILELINES][MAXLINELENGTH];
-char file_2_lines[MAXFILELINES][MAXLINELENGTH];
+char *file_1_lines;
+char *file_2_lines;
 
 int file_1_number_of_lines;
 int file_2_number_of_lines;
@@ -98,18 +99,18 @@ void print_diff(int s_file_length, int l_file_length, int s_file, int l_file, ch
         {
             if (s_file_length - 1 == i && l_file == 1)
             {
-                printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
-                printf("%s line %d: > %s\n", filename2, i + 1, file_2_lines[i]);
+                printf("%s line %d: < %s", filename1, i + 1, file_1_lines+(MAXLINELENGTH*i));
+                printf("%s line %d: > %s\n", filename2, i + 1, file_2_lines+(MAXLINELENGTH*i));
             }
             else if (s_file_length - 1 == i && l_file == 2)
             {
-                printf("%s line %d: < %s\n", filename1, i + 1, file_1_lines[i]);
-                printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
+                printf("%s line %d: < %s\n", filename1, i + 1, file_1_lines+(MAXLINELENGTH*i));
+                printf("%s line %d: > %s", filename2, i + 1, file_2_lines+(MAXLINELENGTH*i));
             }
             else
             {
-                printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
-                printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
+                printf("%s line %d: < %s", filename1, i + 1, file_1_lines+(MAXLINELENGTH*i));
+                printf("%s line %d: > %s", filename2, i + 1, file_2_lines+(MAXLINELENGTH*i));
             }
         }
     }
@@ -119,7 +120,7 @@ void print_diff(int s_file_length, int l_file_length, int s_file, int l_file, ch
     {
         if (l_file == 1)
         {
-            printf("%s line %d: < %s", filename1, i + 1, file_1_lines[i]);
+            printf("%s line %d: < %s", filename1, i + 1, file_1_lines+(MAXLINELENGTH*i));
             if (l_file_length - 1 == i)
             {
                 printf("\n");
@@ -129,7 +130,7 @@ void print_diff(int s_file_length, int l_file_length, int s_file, int l_file, ch
         else if (l_file == 2)
         {
             printf("%s line %d: < \n", filename1, i + 1);
-            printf("%s line %d: > %s", filename2, i + 1, file_2_lines[i]);
+            printf("%s line %d: > %s", filename2, i + 1, file_2_lines+(MAXLINELENGTH*i));
             if (l_file_length - 1 == i)
             {
                 printf("\n");
@@ -138,14 +139,14 @@ void print_diff(int s_file_length, int l_file_length, int s_file, int l_file, ch
     }
 }
 
-int read_lines(char file_lines[MAXFILELINES][MAXLINELENGTH], FILE *file)
+int read_lines(char *file_lines, FILE *file)
 {
     int number_of_lines = 0;
     char buffer[MAXLINELENGTH];
 
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
-        strcpy(file_lines[number_of_lines++], buffer);
+        strcpy(file_lines+(number_of_lines++)*MAXLINELENGTH, buffer);
     }
 
     return number_of_lines;
@@ -181,7 +182,9 @@ void *line_compare_worker(void *arg)
 
     while (line < end_line)
     {
-        if (strcmp(file_1_lines[line], file_2_lines[line]) != 0)
+        if (memcmp(file_1_lines+(line*MAXLINELENGTH), 
+            file_2_lines+(line*MAXLINELENGTH), 
+            sizeof(char)*MAXLINELENGTH) != 0)
         {
             valid_lines[line] = 0;
         }
@@ -203,6 +206,9 @@ int main(int argc, char *argv[])
 
     char *filename1 = argv[1];
     char *filename2 = argv[2];
+
+    file_1_lines = malloc(MAXFILELINES*MAXLINELENGTH*sizeof(char));
+    file_2_lines = malloc(MAXFILELINES*MAXLINELENGTH*sizeof(char));
 
     double start_time = read_timer();
 
