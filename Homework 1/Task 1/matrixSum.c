@@ -37,6 +37,7 @@ counter as described for the matrix multiplication problem in Slides 27-29 about
 #include <sys/time.h>
 #define MAXSIZE 10000 /* maximum matrix size 10000*/
 #define MAXWORKERS 8  /* maximum number of workers */
+#define MODULO 99
 
 pthread_mutex_t barrier; /* mutex lock for the barrier */
 pthread_cond_t go;		 /* condition variable for leaving */
@@ -52,7 +53,14 @@ int globalMin = RAND_MAX;
 int gMinPosX;
 int gMinPosY;
 
-long long unsigned total; // total must be larger than int to hold 4 900 000 000
+long myid[MAXWORKERS];
+
+long long unsigned total; // big datatype to prevent overflow
+
+int counter = 0; // represents next unprocessed index in matrix
+
+// declare mutex for interacting with the bag of tasks
+pthread_mutex_t index_mutex;
 
 /* a reusable counter barrier */
 void Barrier()
@@ -90,14 +98,17 @@ int sums[MAXWORKERS];		  /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
 // my work - local max/mins and pos
-int localMax[MAXWORKERS][3];
-int localMin[MAXWORKERS][3];
+int localMax[MAXSIZE][3];
+int localMin[MAXSIZE][3];
 
 void *Worker(void *);
 
 /* read command line, initialize, and create threads */
 int main(int argc, char *argv[])
 {
+	// initialize mutex for interacting with bag of tasks
+	pthread_mutex_init(&index_mutex, NULL);
+
 	int i, j;
 	long l; /* use long in case of a 64-bit system */
 	pthread_attr_t attr;
@@ -128,7 +139,7 @@ int main(int argc, char *argv[])
 	{
 		for (j = 0; j < size; j++)
 		{
-			matrix[i][j] = rand() % 99; // 200000000;
+			matrix[i][j] = rand() % MODULO;
 		}
 	}
 
@@ -151,27 +162,29 @@ int main(int argc, char *argv[])
 	/* do the parallel work: create the workers */
 	start_time = read_timer();
 	for (l = 0; l < numWorkers; l++)
-		pthread_create(&workerid[l], &attr, Worker, (void *)l);
-
+	{
+		myid[l] = l;
+		pthread_create(&workerid[l], &attr, Worker, (void *)&myid[l]);
+	}
 	// my work - terminating the threads to avoid using barrier function for b)
 	for (i = 0; i < numWorkers; i++)
 		pthread_join(workerid[i], NULL);
 	total = 0;
 
 	// moved printing to the main thread for b)
-	
+
 	for (i = 0; i < numWorkers; i++)
 		// printf("sums: %d \n", sums[i]);
 		total += sums[i];
 	/* get end time */
 	end_time = read_timer();
 	/* print results */
-	printf("The total is %llu\n", total); // using %llu instead of %d because total is long long unsigned
+	printf("The total is %llu\n", total); // using %llu instead of %d because total is long long unsigned and not int
 	printf("The execution time is %g sec\n", end_time - start_time);
 
-	// my work
-
-	for (int i = 0; i < numWorkers; i++)
+	/* find the global maximums and minimums by iterating through the localMax
+	array and using the coordinates to record the positions of these */
+	for (int i = 0; i < size; i++)
 	{
 		if (globalMax < localMax[i][0])
 		{
@@ -188,11 +201,19 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* because the matrix is massive, but only selects from a small pool of numbers (0 to 98, which was the suggested range),
+	inevitably the largest and smallest numbers will occur many times across the whole matrix, so the results will always be 
+	[something][0], because the logic only updates the global maximum and minimum when a strictly larger or smaller value is 
+	found. Once the first occurrence of the maximum (98) or minimum (0) is encountered, subsequent occurences are not saved
+	because the < and > operators used in the comparison. you can see more variability in the results of the positions
+	by increasing the modulo and decreasing the max size definitions. however, using too large arrays and modulos will cause
+	the sum to overflow if it exceeds 18 446 744 073 709 551 615 */
+
 	printf("The maximum value is %d, found in array position [%d][%d] \n", globalMax, gMaxPosX, gMaxPosY);
 
 	printf("The minimum value is %d, found in array position [%d][%d] \n", globalMin, gMinPosX, gMinPosY);
 
-	printf("test case: %d \n", matrix[6][16]);
+	//printf("test case: %d \n", matrix[6][16]);
 
 	return 0;
 }
@@ -201,71 +222,98 @@ int main(int argc, char *argv[])
    After a barrier, worker(0) computes and prints the total */
 void *Worker(void *arg)
 {
-	long myid = (long)arg;
-	int i, j, first, last;
+	//long myid = (long)arg; <- this line causes a segmentation fault
+	/* because its taking the argument (the memory address passed
+	to the thread function) and casting it to a long instead of reading the
+	integer stored at that address. instead, we do: */
+
+	long myid = *((long *)arg); // read the integer at that address
+
+	/* which takes the argument, casts it to a long pointer, then deferences that
+	and saves it in myid */
+
+	// int i, j, first, last;
+
 #ifdef DEBUG
 	printf("worker %d (pthread id %d) has started\n", myid, pthread_self());
 #endif
 
-	// my work
-
-	int max = 0;
-	int min = RAND_MAX;
-
-	int maxPosX;
-	int maxPosY;
-
-	int minPosX;
-	int minPosY;
-
-	// end my work
-
-	/* determine first and last rows of my strip */
-	first = myid * stripSize;
-	last = (myid == numWorkers - 1) ? (size - 1) : (first + stripSize - 1);
-
-	/* sum values in my strip */
-	total = 0;
-	for (i = first; i <= last; i++)
+	while (counter < size)
 	{
-		for (j = 0; j < size; j++)
+		// collect task from bag of tasks
+		pthread_mutex_lock(&index_mutex);
+		/* make sure the counter hasnt passed size,
+		which can happen if two threads enter the while loop
+		at the same time. without this condition, both threads
+		will think theres still a row left to process*/
+		if (counter >= size) {
+			/* if the counter is bigger than size, 
+			release the lock and leave the loop*/
+			pthread_mutex_unlock(&index_mutex);
+			break;
+		}
+		/* take a row/index from the matrix using a pointer */
+		int *myTask = matrix[counter];
+		/* save the current value of the counter *before* incrementing it,
+		or the thread will work on the succeeding index rather than the 
+		current one*/
+		int localCounter = counter;
+		counter++;
+		/* once all necessary operations to do with the counter or matrix
+		are done, we release the mutex */
+		pthread_mutex_unlock(&index_mutex);
+
+		/* declare and initialize various variables to do with
+		the maximum and minimum values, as well as their locations in 
+		the matrix and the sum of all values in this row */
+		int max = 0;
+		int min = RAND_MAX;
+
+		int maxPosX = 0;
+		int maxPosY = 0;
+
+		int minPosX = 0;
+		int minPosY = 0;
+
+		int localTotal = 0;
+
+		/* iterate over the row, reassign maximum and minimum and their positions
+		if necessary and add to the sum. */
+		for (int i = 0; i < size; i++)
 		{
-			// my work
-
-			if (matrix[i][j] > max)
+			if (myTask[i] > max)
 			{
-				max = matrix[i][j];
+				max = myTask[i];
 				maxPosX = i;
-				maxPosY = j;
 			}
 
-			if (matrix[i][j] < min)
+			if (myTask[i] < min)
 			{
-				min = matrix[i][j];
+				min = myTask[i];
 				minPosX = i;
-				minPosY = j;
 			}
-
-			// end my work
 
 			// printf("matrix state: %d \n", matrix[i][j]);
 			// printf("running total: %d \n", total);
-			total += matrix[i][j];
+			localTotal += myTask[i];
 		}
+
+		/* change the localMax and localMin arrays to reflect the biggest
+		and smallest numbers found in this row/index, as well as their positions.
+		these are used by the main thread to determine what the global maximum and minimum
+		values are */
+		localMax[localCounter][0] = max;
+		localMax[localCounter][1] = maxPosX;
+		localMax[localCounter][2] = localCounter;
+
+		localMin[localCounter][0] = min;
+		localMin[localCounter][1] = minPosX;
+		localMin[localCounter][2] = localCounter;
+
+		// printf("total: %d \n", total);
+		/* add the partial sum to the corresponding index in sums */
+		sums[myid] += localTotal;
+
+		// Barrier(); do not use the barrier for b)
 	}
-
-	// my work
-	localMax[myid][0] = max;
-	localMax[myid][1] = maxPosX;
-	localMax[myid][2] = maxPosY;
-
-	localMin[myid][0] = min;
-	localMin[myid][1] = minPosX;
-	localMin[myid][2] = minPosY;
-	// end my work
-
-	// printf("total: %d \n", total);
-	sums[myid] = total;
-
-	// Barrier(); do not use the barrier for b)
 }
