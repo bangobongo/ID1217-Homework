@@ -49,7 +49,8 @@ typedef struct
     int thread_id;
     int start_line;
     int end_line;
-    char *lines;
+    char *thread_file1_lines;
+    char *thread_file2_lines;
 } line_compare_data;
 
 double start_time;
@@ -177,14 +178,16 @@ void *line_compare_worker(void *arg)
     int thread_id = data->thread_id;
     int start_line = data->start_line;
     int end_line = data->end_line;
+    char *file1_partition = data->thread_file1_lines;
+    char *file2_partition = data->thread_file2_lines;
 
-    int line = start_line;
+    int line = 0;
 
-    while (line < end_line)
+    while (line < (end_line-start_line))
     {
-        if (memcmp(file_1_lines+(line*MAXLINELENGTH), 
-            file_2_lines+(line*MAXLINELENGTH), 
-            sizeof(char)*MAXLINELENGTH) != 0)
+        if (memcmp( file1_partition+(line*MAXLINELENGTH), 
+                    file2_partition+(line*MAXLINELENGTH), 
+                    sizeof(char)*MAXLINELENGTH) != 0)
         {
             valid_lines[line] = 0;
         }
@@ -287,8 +290,27 @@ int main(int argc, char *argv[])
         {
             end_line = (thread_id+1)*(shortest_file_length/max_threads);
         }
+
+        size_t partition_size = sizeof(char)*MAXLINELENGTH*(end_line-start_line);
+
+        char *thread_file1_partition = malloc(partition_size);
+        char *thread_file2_partition = malloc(partition_size);
         
-        line_compare_data temp_data = {valid_lines, thread_id, start_line, end_line};
+        memcpy( thread_file1_partition, 
+                file_1_lines+(sizeof(char)*start_line*MAXLINELENGTH), 
+                partition_size);
+
+        memcpy( thread_file2_partition, 
+                file_2_lines+(sizeof(char)*start_line*MAXLINELENGTH), 
+                partition_size);
+
+        line_compare_data temp_data = { valid_lines,
+                                        thread_id, 
+                                        start_line, 
+                                        end_line,
+                                        thread_file1_partition,
+                                        thread_file2_partition
+                                        };
         data[i] = temp_data;
         pthread_create(&threads[i], &attr, line_compare_worker, &data[i]);
     }
