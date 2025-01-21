@@ -34,7 +34,20 @@
     still slower with several threads compared to 1. I do not know why anyomore. I think it 
     is unlikely to be false sharing as no 2 threads should share the similar memory space due
     to the thread-wise copied partition.
+
+    After talking to professor Al-Shishtawy, it seemed to him like the slowdown at larger thread counts with
+    small problem sizes was due to the associated overhead with creating threads and such. Also 1 thread is
+    just that fast at memory compares. 
+    
+    Running the program with 1 thread on 2 files with 86k lines of 990 chars each, I get comparison time of
+    0.062073 sec seconds on an Intel Core i5-1135G7 at 2,42 GHz base speed. 
+
+    Running the program with same files, same CPU but 8 threads, I get a comparison time of 0.040927 seconds.
 */
+
+#ifndef _REENTRANT
+#define _REENTRANT
+#endif
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -44,7 +57,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define MAXWORKERS 1      /* maximum number of workers */
+#define MAXWORKERS 12      /* maximum number of workers */
 #define MAXLINELENGTH 1000  // Maximum number of chars in a line
 #define MAXFILELINES 100000 // Maximum number of lines in a file
 
@@ -289,28 +302,41 @@ int main(int argc, char *argv[])
         in order to maximize spatial locality of cache. A bag of tasks approach
         was tried, but that was marginally slower. We still have some sort of
         false sharing problem as more threads is slower for small files.
+
+        We cant delegate more threads to do work than there are lines in the shortest
+        file, therefore the "&& i < shortest_file_length"
     */ 
     for (int i = 0; i < MAXWORKERS && i < shortest_file_length; i++)
     { 
+        // simply a thread id for each thread
         int thread_id = i;
+
+        // line where thread should start processing
         int start_line = thread_id*(shortest_file_length/max_threads);
+
+        // line where thread should stop processing, inclusive
         int end_line;
 
         // if this is the last iteration
         if(!(i+1 < MAXWORKERS && i+1 < shortest_file_length))
         {
+            // makes sure last thread processes to the last line
             end_line = shortest_file_length;
         }
         else
         {
+            // otherwise divide it evenly
             end_line = (thread_id+1)*(shortest_file_length/max_threads);
         }
 
+        // the size of the partition the thread processes in bytes
         size_t partition_size = sizeof(char)*MAXLINELENGTH*(end_line-start_line);
 
+        // allocate memory for partitions, one for each file
         char *thread_file1_partition = malloc(partition_size);
         char *thread_file2_partition = malloc(partition_size);
         
+        // copy memory blocks into thread private memory block
         memcpy( thread_file1_partition, 
                 file_1_lines+(sizeof(char)*start_line*MAXLINELENGTH), 
                 partition_size);
@@ -319,6 +345,7 @@ int main(int argc, char *argv[])
                 file_2_lines+(sizeof(char)*start_line*MAXLINELENGTH), 
                 partition_size);
 
+        // make the data to send to the thread
         line_compare_data temp_data = { valid_lines,
                                         thread_id, 
                                         start_line, 
@@ -326,11 +353,16 @@ int main(int argc, char *argv[])
                                         thread_file1_partition,
                                         thread_file2_partition
                                         };
+
+        // array here to stop threads sharing data in pointers, 
+        // trust me it solves a bug :)
         data[i] = temp_data;
+
+        // create the threads, calling line compare function
         pthread_create(&threads[i], &attr, line_compare_worker, &data[i]);
     }
 
-    // Wait for all threads to finish
+    // wait for all threads to finish
     for (int i = 0; i < MAXWORKERS; i++)
     {
         pthread_join(threads[i], NULL);
@@ -338,15 +370,15 @@ int main(int argc, char *argv[])
     end_time = read_timer();
     double comparison_time = end_time - start_time;
 
-    // Prints the desired ouput for the task, 
-    print_diff( shortest_file_length, 
+    // Prints the desired ouput for the task
+    /* print_diff( shortest_file_length, 
                 longest_file_length, 
                 shortest_file, 
                 longest_file, 
                 filename1, 
                 filename2, 
                 valid_lines
-                );
+                ); */
 
     // print_valid_lines(valid_lines, shortest_file_length);
     printf("\n\nCompleted read in %f sec\n", read_time);
