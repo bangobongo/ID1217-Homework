@@ -45,18 +45,6 @@
     Running the program with same files, same CPU but 8 threads, I get a comparison time of 0.040927 seconds.
 */
 
-#ifndef _REENTRANT
-#define _REENTRANT
-#endif
-
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <time.h>
-#include <string.h>
-#include <sys/time.h>
-
 #include "diff.h"
 
 #define MAXWORKERS 8      /* maximum number of workers */
