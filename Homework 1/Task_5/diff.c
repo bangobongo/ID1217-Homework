@@ -29,6 +29,11 @@
     stored contigiously but not the chars that they then point to, this means mem fragmentation and slower
     access times due to cache misses. But this should cause it to be slow for 1 thread as well, so
     it is probably not the entire solution.
+
+    The chars are now stored in contigious memory, each thread gets its own partition and it is
+    still slower with several threads compared to 1. I do not know why anyomore. I think it 
+    is unlikely to be false sharing as no 2 threads should share the similar memory space due
+    to the thread-wise copied partition.
 */
 
 #include <pthread.h>
@@ -39,7 +44,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define MAXWORKERS 12      /* maximum number of workers */
+#define MAXWORKERS 1      /* maximum number of workers */
 #define MAXLINELENGTH 1000  // Maximum number of chars in a line
 #define MAXFILELINES 100000 // Maximum number of lines in a file
 
@@ -181,13 +186,15 @@ void *line_compare_worker(void *arg)
     char *file1_partition = data->thread_file1_lines;
     char *file2_partition = data->thread_file2_lines;
 
+    size_t line_size = sizeof(char)*MAXLINELENGTH;
+
     int line = 0;
 
     while (line < (end_line-start_line))
     {
         if (memcmp( file1_partition+(line*MAXLINELENGTH), 
                     file2_partition+(line*MAXLINELENGTH), 
-                    sizeof(char)*MAXLINELENGTH) != 0)
+                    line_size) != 0)
         {
             valid_lines[line+(start_line)] = 0;
         }
