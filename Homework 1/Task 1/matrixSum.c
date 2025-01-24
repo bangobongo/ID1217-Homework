@@ -62,6 +62,9 @@ int counter = 0; // represents next unprocessed index in matrix
 // declare mutex for interacting with the bag of tasks
 pthread_mutex_t index_mutex;
 
+// declare mutex for adding to the shared sums variable
+pthread_mutex_t sums_mutex;
+
 /* a reusable counter barrier */
 void Barrier()
 {
@@ -94,7 +97,8 @@ double read_timer()
 
 double start_time, end_time;  /* start and end times */
 int size, stripSize;		  /* assume size is multiple of numWorkers */
-int sums[MAXWORKERS];		  /* partial sums */
+// int sums[MAXWORKERS];		  /* partial sums */ - removed for part b
+unsigned long long sums = 0;	/* replaces the array */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
 // my work - local max/mins and pos
@@ -108,6 +112,9 @@ int main(int argc, char *argv[])
 {
 	// initialize mutex for interacting with bag of tasks
 	pthread_mutex_init(&index_mutex, NULL);
+
+	// initialize mutex for interacting with shared sums variable
+	pthread_mutex_init(&sums_mutex, NULL);
 
 	int i, j;
 	long l; /* use long in case of a 64-bit system */
@@ -166,20 +173,14 @@ int main(int argc, char *argv[])
 		myid[l] = l;
 		pthread_create(&workerid[l], &attr, Worker, (void *)&myid[l]);
 	}
-	// my work - terminating the threads to avoid using barrier function for b)
+	// terminating the threads to avoid using barrier function for b
 	for (i = 0; i < numWorkers; i++)
 		pthread_join(workerid[i], NULL);
-	total = 0;
 
-	// moved printing to the main thread for b)
-
-	for (i = 0; i < numWorkers; i++)
-		// printf("sums: %d \n", sums[i]);
-		total += sums[i];
 	/* get end time */
 	end_time = read_timer();
-	/* print results */
-	printf("The total is %llu\n", total); // using %llu instead of %d because total is long long unsigned and not int
+	/* print results, no need to use mutex because all the threads are done so no risk of concurrency issues */
+	printf("The total is %llu\n", sums); // using %llu instead of %d because sums is long long unsigned and not int
 	printf("The execution time is %g sec\n", end_time - start_time);
 
 	/* find the global maximums and minimums by iterating through the localMax
@@ -204,7 +205,7 @@ int main(int argc, char *argv[])
 	/* because the matrix is massive, but only selects from a small pool of numbers (0 to 98, which was the suggested range),
 	inevitably the largest and smallest numbers will occur many times across the whole matrix, so the results will always be 
 	[something][0], because the logic only updates the global maximum and minimum when a strictly larger or smaller value is 
-	found. Once the first occurrence of the maximum (98) or minimum (0) is encountered, subsequent occurences are not saved
+	found. once the first occurrence of the maximum (98) or minimum (0) is encountered, subsequent occurences are not saved
 	because the < and > operators used in the comparison. you can see more variability in the results of the positions
 	by increasing the modulo and decreasing the max size definitions. however, using too large arrays and modulos will cause
 	the sum to overflow if it exceeds 18 446 744 073 709 551 615 */
@@ -270,10 +271,7 @@ void *Worker(void *arg)
 		int min = RAND_MAX;
 
 		int maxPosX = 0;
-		int maxPosY = 0;
-
 		int minPosX = 0;
-		int minPosY = 0;
 
 		int localTotal = 0;
 
@@ -304,16 +302,27 @@ void *Worker(void *arg)
 		values are */
 		localMax[localCounter][0] = max;
 		localMax[localCounter][1] = maxPosX;
-		localMax[localCounter][2] = localCounter;
 
 		localMin[localCounter][0] = min;
 		localMin[localCounter][1] = minPosX;
+
+		/* localmax[localcounter][2] and localmin[localcounter][2] are always set to localcounter 
+        because they represent the y-coordinate (row index) of the matrix. in this implementation, 
+        the thread processes one row at a time, and localcounter keeps track of which specific row 
+        is being processed. this makes localcounter inherently the y-coordinate of the maximum and 
+        minimum values found in that row. in contrast, maxposx and minposx are necessary to track the column 
+        indices (x-coordinates) of the maximum and minimum values within the row, since these 
+        can vary depending on where the values are found. */
+		localMax[localCounter][2] = localCounter;
 		localMin[localCounter][2] = localCounter;
+		
 
 		// printf("total: %d \n", total);
-		/* add the partial sum to the corresponding index in sums */
-		sums[myid] += localTotal;
+		/* add the partial sum to the shared sums variable */
+		pthread_mutex_lock(&sums_mutex);
+		sums += localTotal;
+		pthread_mutex_unlock(&sums_mutex);
 
-		// Barrier(); do not use the barrier for b)
+		// Barrier(); do not use the barrier for b
 	}
 }
