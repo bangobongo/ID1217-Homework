@@ -1,4 +1,25 @@
 
+
+/*
+    queens.c
+
+    gives the number of possible solutions for solving the N-queens problem
+    with N = BOARD_SIZE defined below, if you want to change the N, then change
+    that value and recompile. Same goes for number of threads, set NUM_THREADS 
+    before compiling.
+
+    compile using:
+
+        gcc -fopenmp -Og -o queens queens.c
+
+    the -Og is to set the compiler into "optimize debug experience" it is not strictly needed.
+
+    run using:
+        cmd:        queens
+        powershell: ./queens
+*/
+
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -8,13 +29,12 @@
 #include <sys/time.h>
 
 #define BOARD_SIZE 8
+#define NUM_THREADS 8
 
 typedef enum {
     EMPTY,
     QUEEN
 } pos_state;
-
-pos_state queen_rows[BOARD_SIZE];
 
 int nr_of_solutions = 0;
 
@@ -138,14 +158,14 @@ void recursive_solve(pos_state board[BOARD_SIZE][BOARD_SIZE], int col)
 
 int main()
 {   
-    omp_set_num_threads(1);
+    omp_set_num_threads(NUM_THREADS);
     
     pos_state board[BOARD_SIZE][BOARD_SIZE];
     empty_board(board);
 
     double start_time = read_timer();
 
-    #pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for
     for(int row = 0; row < BOARD_SIZE; row++)
     {
         pos_state thread_board[BOARD_SIZE][BOARD_SIZE];
@@ -160,15 +180,3 @@ int main()
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
