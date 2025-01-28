@@ -71,7 +71,6 @@ double start_time, end_time;
 int numWorkers;
 int size;
 int matrix[MAXSIZE][MAXSIZE];
-void *Worker(void *);
 
 int max = 0;
 int maxX;
