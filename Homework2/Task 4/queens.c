@@ -120,6 +120,7 @@ void recursive_solve(pos_state board[BOARD_SIZE][BOARD_SIZE], int col)
 {
     if(col == BOARD_SIZE)
     {
+        #pragma omp critical
         nr_of_solutions++;
         return;
     }
@@ -138,6 +139,7 @@ void recursive_solve(pos_state board[BOARD_SIZE][BOARD_SIZE], int col)
 int main()
 {   
     omp_set_num_threads(1);
+    
     pos_state board[BOARD_SIZE][BOARD_SIZE];
     empty_board(board);
 
@@ -151,7 +153,6 @@ int main()
         place_queen(thread_board, row, 0);
         recursive_solve(thread_board, 1);
     }
-    recursive_solve(board, 0);
     double end_time = read_timer();
 
     printf("Completed in %f\n", end_time-start_time);
