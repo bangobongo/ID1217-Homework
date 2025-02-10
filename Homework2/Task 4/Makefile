@@ -1,3 +1,3 @@
 all:
-	gcc -fopenmp -Og -o queens queens.c
+	gcc -fopenmp -O3 -o queens queens.c
 	./queens
