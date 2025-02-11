@@ -7,7 +7,7 @@
 #define MAX_THREAD_COUNT 8
 #define UPPER_BOUND 10
 #define LOWER_BOUND 5
-#define MAX_BATHROOM_USES 5
+#define MAX_BATHROOM_USES 30
 
 // Compile the code by linking with -lpthread -lrt -o0
 
@@ -24,7 +24,9 @@ sem_t *gender_count;
 // take thread count as argument
 int main(int argc, char *argv[])
 {
-    thread_count = (argc < MAX_THREAD_COUNT) ? argc : MAX_THREAD_COUNT;
+    thread_count = (atoi(argv[1]) < MAX_THREAD_COUNT) ? atoi(argv[1]) : MAX_THREAD_COUNT;
+    printf("%d arg\n", atoi(argv[0]));
+    printf("%d threads\n", thread_count);
 
     sem_init(wait_for_opposite_gender, 0, 0);
     sem_init(mutex, 0, 0);
@@ -48,7 +50,7 @@ int main(int argc, char *argv[])
         
     }
 
-    for (int thread_id = 0; thread_id < thread_count; thread_id)
+    for (int thread_id = 0; thread_id < thread_count; thread_id++)
     {
         pthread_join(thread[thread_id], NULL);
     }
@@ -68,10 +70,10 @@ void use_bathroom(int thread_id)
 
 void male_wants_to_enter(int thread_id)
 {
-    printf("thread %d: male wants to enter\n", thread_id);
     sem_wait(mutex);
-    if (male_count == 0)
+    if (female_count != 0)
     {
+        printf("thread %d: male waiting\n", thread_id);
         sem_wait(wait_for_opposite_gender);
     }
     printf("thread %d: male enters\n", thread_id);
@@ -84,7 +86,7 @@ void male_wants_to_enter(int thread_id)
     male_count--;
     printf("thread %d: male exits\n", thread_id);
 
-    if (male_count == 0)
+    if (female_count != 0)
     {
         sem_post(wait_for_opposite_gender);
     }
@@ -96,7 +98,7 @@ void female_wants_to_enter(int thread_id)
     printf("thread %d: female wants to enter\n", thread_id);
     sem_wait(mutex);
     printf("thread %d: female enters\n", thread_id);
-    if (female_count == 0)
+    if (male_count != 0)
     {
         sem_wait(wait_for_opposite_gender);
     }
@@ -108,7 +110,7 @@ void female_wants_to_enter(int thread_id)
     sem_wait(mutex);
     female_count--;
 
-    if (female_count == 0)
+    if (male_count != 0)
     {
         sem_post(wait_for_opposite_gender);
     }
@@ -134,7 +136,7 @@ void *male_worker(void *thread_id_ptr)
         work(thread_id);
         male_wants_to_enter(thread_id);
     }
-    printf("thread %d: FINISHED", thread_id);
+    printf("thread %d: CLOCKED OUT\n", thread_id);
 }
 
 void *female_worker(void *thread_id_ptr)
@@ -146,5 +148,5 @@ void *female_worker(void *thread_id_ptr)
         work(thread_id);
         female_wants_to_enter(thread_id);
     }
-    printf("thread %d: FINISHED", thread_id);
+    printf("thread %d: CLOCKED OUT\n", thread_id);
 }
