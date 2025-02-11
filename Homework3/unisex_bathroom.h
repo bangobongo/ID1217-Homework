@@ -1,5 +1,4 @@
 
-
 void *female_worker(void *thread_id);
 void *male_worker(void *thread_id);
 void work(int thread_id);

@@ -1,5 +1,4 @@
 
 all:
-	gcc -lpthread -o0 -o unisex unisex_bathroom.c
-	./unisex
+	gcc -lpthread -o0 unisex_bathroom.c -o unisex_solve
 
