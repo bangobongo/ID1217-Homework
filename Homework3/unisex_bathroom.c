@@ -5,13 +5,15 @@
 #include <stdint.h>
 #include <time.h>
 
-#define MAX_THREAD_COUNT 8
-#define UPPER_BOUND 1000000
+#define MAX_THREAD_COUNT 12
+#define UPPER_BOUND 1000
 #define LOWER_BOUND (UPPER_BOUND / 2)
-#define MAX_BATHROOM_USES 10000
+#define MAX_BATHROOM_USES 30
 
 int male_count = 0;
 int female_count = 0;
+
+int wrong = 0;
 
 int waiting_males = 0;
 int waiting_females = 0;
@@ -34,6 +36,10 @@ void delay(uint32_t iterations) {
 void use_bathroom(int thread_id) {
     int random = rand() % (UPPER_BOUND - LOWER_BOUND + 1) + LOWER_BOUND;
     delay(random);
+    if(male_count > 0 && female_count > 0)
+    {
+        wrong = 1;
+    }
     printf("thread %d: used bathroom for %d cycles\n", thread_id, random);
     printf("  Current bathroom state -> Males: %d, Females: %d\n", male_count, female_count);
 }
@@ -47,7 +53,7 @@ void work(int thread_id) {
 void male_wants_to_enter(int thread_id) {
     printf("thread %d: male wants to enter\n", thread_id);
     sem_wait(&mutex);
-    if (female_count > 0) {
+    while (female_count > 0) {
         waiting_males++;
         sem_post(&mutex);
         printf("thread %d: male waiting (females present)\n", thread_id);
@@ -76,7 +82,7 @@ void male_wants_to_enter(int thread_id) {
 void female_wants_to_enter(int thread_id) {
     printf("thread %d: female wants to enter\n", thread_id);
     sem_wait(&mutex);
-    if(male_count > 0) {
+    while (male_count > 0) {
         waiting_females++;
         sem_post(&mutex);
         printf("thread %d: female waiting (males present)\n", thread_id);
@@ -150,6 +156,11 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < thread_count; i++) {
         pthread_join(thread[i], NULL);
     }
+    if (wrong)
+    {   
+        printf("BAD SOLUTION!");
+    }
+    
     printf("\n##### PROGRAM FINISHED #####\n");
     return 0;
 }
