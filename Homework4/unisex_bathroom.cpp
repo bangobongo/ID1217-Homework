@@ -35,7 +35,7 @@ void *male_worker(void *arg) {
 }
 
 void *female_worker(void *arg) {
-    int thread_id = *((int *) arg);
+    int thread_id = *((int *) arg);    
     for (int i = 0; i < MAX_BATHROOM_USES; i++) {
         work(thread_id);
         bathroom.womanEnter(thread_id);
@@ -54,15 +54,15 @@ int main(int argc, char *argv[]) {
     if (thread_count > MAX_THREAD_COUNT) {
         thread_count = MAX_THREAD_COUNT;
     }
-    printf("Creating %d threads\n", thread_count);
 
+    printf("%0.3f: Creating %d threads\n", Clock::now() - bathroom.start_time, thread_count);
     for (int i = 0; i < thread_count; i++) {
         thread_ids[i] = i;
         if (i % 2 == 0) {
-            printf("Creating male thread %d\n", i);
+            printf("%0.3f: Creating male thread %d\n", Clock::now() - bathroom.start_time, i);
             pthread_create(&thread[i], NULL, male_worker, &thread_ids[i]);
         } else {
-            printf("Creating female thread %d\n", i);
+            printf("%0.3f: Creating female thread %d\n", Clock::now() - bathroom.start_time, i);
             pthread_create(&thread[i], NULL, female_worker, &thread_ids[i]);
         }
     }
@@ -72,12 +72,12 @@ int main(int argc, char *argv[]) {
     }
     if (bathroom.wrong)
     {   
-        printf("BAD SOLUTION!");
+        printf("%0.3f: BAD SOLUTION!", Clock::now() - bathroom.start_time);
     } else {
-        printf("GOOD SOLUTION!");
+        printf("%0.3f: GOOD SOLUTION!", Clock::now() - bathroom.start_time);
     }
     
-    printf("\n##### PROGRAM FINISHED #####\n");
+    printf("\n##### PROGRAM FINISHED (%0.3f) #####\n", Clock::now() - bathroom.start_time);
     return 0;
 }
 

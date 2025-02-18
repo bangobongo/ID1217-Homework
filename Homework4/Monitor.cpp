@@ -4,11 +4,23 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <chrono>
 
 #define MAX_THREAD_COUNT 12
-#define UPPER_BOUND 1000000
+#define UPPER_BOUND 10000
 #define LOWER_BOUND (UPPER_BOUND / 2)
-#define MAX_BATHROOM_USES 30
+#define MAX_BATHROOM_USES 60
+
+namespace sc = std::chrono;
+
+using Clock = sc::high_resolution_clock;
+using TimePoint = Clock::time_point;
+using DurationMs = sc::duration<double, std::milli>;
+
+struct thread_data {
+    int thread_id;
+    TimePoint start_time;
+};
 
 class Monitor {
 private:
@@ -38,8 +50,9 @@ private:
         {
             this->wrong = 1;
         }
-        printf("thread %d: used bathroom for %d cycles\n", thread_id, random);
-        printf("  Current bathroom state -> Males: %d, Females: %d\n", male_count, female_count);
+        DurationMs duration = Clock::now() - this->start_time;
+        printf("%llu: thread %d: used bathroom for %d cycles\n", duration, thread_id, random);
+        printf("%0.3f:  Current bathroom state -> Males: %d, Females: %d\n", Clock::now() - this->start_time, male_count, female_count);
         pthread_mutex_unlock(&mutex);
     }
 
@@ -51,6 +64,7 @@ private:
 
 public:
     int wrong;
+    TimePoint start_time;
 
     // Constructor
     Monitor() {
@@ -59,6 +73,7 @@ public:
         this->waiting_males = 0;
         this->waiting_females = 0;
         this->wrong = 0;
+        this->start_time = Clock::now();
         pthread_mutex_init(&this->mutex, NULL);
         pthread_cond_init(&this->males_in_bathroom, NULL);
         pthread_cond_init(&this->females_in_bathroom, NULL);
@@ -70,11 +85,11 @@ public:
         while(this->female_count > 0) 
         {
             this->waiting_males++;
-            printf("thread %d: male waiting (males present)\n", thread_id);
+            printf("%u: thread %d: male waiting (males present)\n", Clock::now() - this->start_time, thread_id);
             pthread_cond_wait(&this->females_in_bathroom, &this->mutex);
             this->waiting_males--;
         }
-        printf("thread %d: male enters\n", thread_id);
+        printf("%u: thread %d: male enters\n",Clock::now() - this->start_time, thread_id);
         this->male_count++;
         pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
@@ -86,9 +101,7 @@ public:
         this->male_count--;
         if(this->male_count == 0) {
             printf("thread %d: signal empty bathroom to females\n", thread_id);
-            for(int i = 0; i < 10; i++) {
-                pthread_cond_signal(&this->males_in_bathroom);
-            }
+            pthread_cond_broadcast(&this->males_in_bathroom);
         }
         pthread_mutex_unlock(&this->mutex);
     }
@@ -115,10 +128,7 @@ public:
         this->female_count--;
         if(this->female_count == 0) {
             printf("thread %d: signal empty bathroom to males\n", thread_id);
-            for(int i = 0; i < 10; i++) {
-                pthread_cond_signal(&this->females_in_bathroom);
-            }
-            
+            pthread_cond_broadcast(&this->females_in_bathroom);
         }
         pthread_mutex_unlock(&this->mutex);
     }

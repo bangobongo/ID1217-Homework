@@ -1,6 +1,6 @@
 # Compiler
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -pthread
+CXXFLAGS = -Wall -Wextra -std=c++17 -pthread -w
 
 # Find all .cpp and .hpp files in the current directory
 SRCS := $(wildcard *.cpp)
