@@ -8,7 +8,7 @@
 #define MAX_THREAD_COUNT 12
 #define UPPER_BOUND 1000
 #define LOWER_BOUND (UPPER_BOUND / 2)
-#define MAX_BATHROOM_USES 30
+#define MAX_BATHROOM_USES 50
 
 int male_count = 0;
 int female_count = 0;
@@ -159,6 +159,8 @@ int main(int argc, char *argv[]) {
     if (wrong)
     {   
         printf("BAD SOLUTION!");
+    } else {
+        printf("GOOD SOLUTION!");
     }
     
     printf("\n##### PROGRAM FINISHED #####\n");
