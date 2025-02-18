@@ -51,8 +51,8 @@ private:
             this->wrong = 1;
         }
         DurationMs duration = Clock::now() - this->start_time;
-        printf("%llu: thread %d: used bathroom for %d cycles\n", duration, thread_id, random);
-        printf("%0.3f:  Current bathroom state -> Males: %d, Females: %d\n", Clock::now() - this->start_time, male_count, female_count);
+        printf("%llu: thread %d: used bathroom for %d cycles\n", Clock::now() - this->start_time, thread_id, random);
+        printf("%llu:  Current bathroom state -> Males: %d, Females: %d\n", Clock::now() - this->start_time, male_count, female_count);
         pthread_mutex_unlock(&mutex);
     }
 
@@ -80,16 +80,16 @@ public:
     }
 
     void manEnter(int thread_id) {
-        printf("thread %d: male wants to enter\n", thread_id);
+        printf("%llu: thread %d: male wants to enter\n", Clock::now() - this->start_time, thread_id);
         pthread_mutex_lock(&mutex);
         while(this->female_count > 0) 
         {
             this->waiting_males++;
-            printf("%u: thread %d: male waiting (males present)\n", Clock::now() - this->start_time, thread_id);
+            printf("%llu: thread %d: male waiting (males present)\n", Clock::now() - this->start_time, thread_id); // timing correct
             pthread_cond_wait(&this->females_in_bathroom, &this->mutex);
             this->waiting_males--;
         }
-        printf("%u: thread %d: male enters\n",Clock::now() - this->start_time, thread_id);
+        printf("%llu: thread %d: male enters\n",Clock::now() - this->start_time, thread_id);
         this->male_count++;
         pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
@@ -100,23 +100,23 @@ public:
         printf("thread %d: male exits\n", thread_id);
         this->male_count--;
         if(this->male_count == 0) {
-            printf("thread %d: signal empty bathroom to females\n", thread_id);
+            printf("%llu: thread %d: signal empty bathroom to females\n", Clock::now() - this->start_time, thread_id);
             pthread_cond_broadcast(&this->males_in_bathroom);
         }
         pthread_mutex_unlock(&this->mutex);
     }
 
     void womanEnter(int thread_id) {
-        printf("thread %d: female wants to enter\n", thread_id);
+        printf("%llu: thread %d: female wants to enter\n", Clock::now() - this->start_time, thread_id);
         pthread_mutex_lock(&this->mutex);
         while(this->male_count > 0) 
         {
             this->waiting_females++;
-            printf("thread %d: female waiting (males present)\n", thread_id);
+            printf("%llu: thread %d: female waiting (males present)\n", Clock::now() - this->start_time, thread_id);
             pthread_cond_wait(&this->males_in_bathroom, &this->mutex);
             this->waiting_females--;
         }
-        printf("thread %d: female enters\n", thread_id);
+        printf("%llu: thread %d: female enters\n", Clock::now() - this->start_time, thread_id);
         this->female_count++;
         pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
@@ -124,10 +124,10 @@ public:
 
     void womanExit(int thread_id) {
         pthread_mutex_lock(&this->mutex);
-        printf("thread %d: female exits\n", thread_id);
+        printf("%llu: thread %d: female exits\n", Clock::now() - this->start_time, thread_id);
         this->female_count--;
         if(this->female_count == 0) {
-            printf("thread %d: signal empty bathroom to males\n", thread_id);
+            printf("%llu: thread %d: signal empty bathroom to males\n", Clock::now() - this->start_time, thread_id);
             pthread_cond_broadcast(&this->females_in_bathroom);
         }
         pthread_mutex_unlock(&this->mutex);

@@ -20,7 +20,7 @@ void delay(uint32_t iterations) {
 void work(int thread_id) {
     int random = rand() % (UPPER_BOUND - LOWER_BOUND + 1) + LOWER_BOUND;
     delay(random);
-    printf("thread %d: worked for %d cycles\n", thread_id, random);
+    printf("%llu: thread %d: worked for %d cycles\n", Clock::now() - bathroom.start_time, thread_id, random);
 }
 
 void *male_worker(void *arg) {
@@ -30,7 +30,7 @@ void *male_worker(void *arg) {
         bathroom.manEnter(thread_id);
         bathroom.manExit(thread_id);
     }
-    printf("thread %d: CLOCKED OUT\n", thread_id);
+    printf("%llu: thread %d: CLOCKED OUT\n", Clock::now() - bathroom.start_time, thread_id);
     return NULL;
 }
 
@@ -41,7 +41,7 @@ void *female_worker(void *arg) {
         bathroom.womanEnter(thread_id);
         bathroom.womanExit(thread_id);
     }
-    printf("thread %d: CLOCKED OUT\n", thread_id);
+    printf("%llu: thread %d: CLOCKED OUT\n", Clock::now() - bathroom.start_time, thread_id);
     return NULL;
 }
 
@@ -55,14 +55,14 @@ int main(int argc, char *argv[]) {
         thread_count = MAX_THREAD_COUNT;
     }
 
-    printf("%0.3f: Creating %d threads\n", Clock::now() - bathroom.start_time, thread_count);
+    printf("%llu: Creating %d threads\n", Clock::now() - bathroom.start_time, thread_count);
     for (int i = 0; i < thread_count; i++) {
         thread_ids[i] = i;
         if (i % 2 == 0) {
-            printf("%0.3f: Creating male thread %d\n", Clock::now() - bathroom.start_time, i);
+            printf("%llu: Creating male thread %d\n", Clock::now() - bathroom.start_time, i);
             pthread_create(&thread[i], NULL, male_worker, &thread_ids[i]);
         } else {
-            printf("%0.3f: Creating female thread %d\n", Clock::now() - bathroom.start_time, i);
+            printf("%llu: Creating female thread %d\n", Clock::now() - bathroom.start_time, i);
             pthread_create(&thread[i], NULL, female_worker, &thread_ids[i]);
         }
     }
@@ -72,12 +72,12 @@ int main(int argc, char *argv[]) {
     }
     if (bathroom.wrong)
     {   
-        printf("%0.3f: BAD SOLUTION!", Clock::now() - bathroom.start_time);
+        printf("%llu: BAD SOLUTION!", Clock::now() - bathroom.start_time);
     } else {
-        printf("%0.3f: GOOD SOLUTION!", Clock::now() - bathroom.start_time);
+        printf("%llu: GOOD SOLUTION!", Clock::now() - bathroom.start_time);
     }
     
-    printf("\n##### PROGRAM FINISHED (%0.3f) #####\n", Clock::now() - bathroom.start_time);
+    printf("\n##### PROGRAM FINISHED (%llu) #####\n", Clock::now() - bathroom.start_time);
     return 0;
 }
 
