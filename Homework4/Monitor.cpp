@@ -8,7 +8,7 @@
 #define MAX_THREAD_COUNT 12
 #define UPPER_BOUND 1000000
 #define LOWER_BOUND (UPPER_BOUND / 2)
-#define MAX_BATHROOM_USES 4
+#define MAX_BATHROOM_USES 30
 
 class Monitor {
 private:
@@ -65,13 +65,16 @@ public:
     }
 
     void manEnter(int thread_id) {
+        printf("thread %d: male wants to enter\n", thread_id);
         pthread_mutex_lock(&mutex);
-        if(this->female_count > 0) 
+        while(this->female_count > 0) 
         {
             this->waiting_males++;
+            printf("thread %d: male waiting (males present)\n", thread_id);
             pthread_cond_wait(&this->females_in_bathroom, &this->mutex);
             this->waiting_males--;
         }
+        printf("thread %d: male enters\n", thread_id);
         this->male_count++;
         pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
@@ -79,21 +82,28 @@ public:
 
     void manExit(int thread_id) {
         pthread_mutex_lock(&this->mutex);
+        printf("thread %d: male exits\n", thread_id);
         this->male_count--;
         if(this->male_count == 0) {
-            pthread_cond_signal(&this->males_in_bathroom);
+            printf("thread %d: signal empty bathroom to females\n", thread_id);
+            for(int i = 0; i < 10; i++) {
+                pthread_cond_signal(&this->males_in_bathroom);
+            }
         }
         pthread_mutex_unlock(&this->mutex);
     }
 
     void womanEnter(int thread_id) {
+        printf("thread %d: female wants to enter\n", thread_id);
         pthread_mutex_lock(&this->mutex);
-        if(this->male_count > 0) 
+        while(this->male_count > 0) 
         {
             this->waiting_females++;
+            printf("thread %d: female waiting (males present)\n", thread_id);
             pthread_cond_wait(&this->males_in_bathroom, &this->mutex);
             this->waiting_females--;
         }
+        printf("thread %d: female enters\n", thread_id);
         this->female_count++;
         pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
@@ -101,9 +111,14 @@ public:
 
     void womanExit(int thread_id) {
         pthread_mutex_lock(&this->mutex);
+        printf("thread %d: female exits\n", thread_id);
         this->female_count--;
         if(this->female_count == 0) {
-            pthread_cond_signal(&this->females_in_bathroom);
+            printf("thread %d: signal empty bathroom to males\n", thread_id);
+            for(int i = 0; i < 10; i++) {
+                pthread_cond_signal(&this->females_in_bathroom);
+            }
+            
         }
         pthread_mutex_unlock(&this->mutex);
     }
