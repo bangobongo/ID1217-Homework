@@ -1,9 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <time.h>
-#include "Monitor.hpp"
+#include "Monitor.cpp"
 
 int thread_count;
 
@@ -19,7 +18,7 @@ void delay(uint32_t iterations) {
 }
 
 void work(int thread_id) {
-    int random = rand() % (500 - 250 + 1) + 250;
+    int random = rand() % (UPPER_BOUND - LOWER_BOUND + 1) + LOWER_BOUND;
     delay(random);
     printf("thread %d: worked for %d cycles\n", thread_id, random);
 }
@@ -28,8 +27,8 @@ void *male_worker(void *arg) {
     int thread_id = *((int *) arg);
     for (int i = 0; i < MAX_BATHROOM_USES; i++) {
         work(thread_id);
-        bathroom.manEnter();
-        bathroom.manExit();
+        bathroom.manEnter(thread_id);
+        bathroom.manExit(thread_id);
     }
     printf("thread %d: CLOCKED OUT\n", thread_id);
     return NULL;
@@ -39,8 +38,8 @@ void *female_worker(void *arg) {
     int thread_id = *((int *) arg);
     for (int i = 0; i < MAX_BATHROOM_USES; i++) {
         work(thread_id);
-        bathroom.womanEnter();
-        bathroom.womanExit();
+        bathroom.womanEnter(thread_id);
+        bathroom.womanExit(thread_id);
     }
     printf("thread %d: CLOCKED OUT\n", thread_id);
     return NULL;

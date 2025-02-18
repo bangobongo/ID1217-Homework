@@ -1,9 +1,16 @@
 
-#include "Monitor.hpp"
 #include <pthread.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+
+#define MAX_THREAD_COUNT 12
+#define UPPER_BOUND 1000000
+#define LOWER_BOUND (UPPER_BOUND / 2)
+#define MAX_BATHROOM_USES 4
 
 class Monitor {
-
 private:
     // Number of males currently in the bathroom
     int male_count;
@@ -26,12 +33,14 @@ private:
     void use_bathroom(int thread_id) {
         int random = rand() % (UPPER_BOUND - LOWER_BOUND + 1) + LOWER_BOUND;
         delay(random);
-        if(male_count > 0 && female_count > 0)
+        pthread_mutex_lock(&mutex);
+        if(this->male_count > 0 && this->female_count > 0)
         {
-            this.wrong = 1;
+            this->wrong = 1;
         }
         printf("thread %d: used bathroom for %d cycles\n", thread_id, random);
         printf("  Current bathroom state -> Males: %d, Females: %d\n", male_count, female_count);
+        pthread_mutex_unlock(&mutex);
     }
 
     void delay(uint32_t iterations) {
@@ -45,58 +54,58 @@ public:
 
     // Constructor
     Monitor() {
-        this.male_count = 0;
-        this.female_count = 0;
-        this.waiting_males = 0;
-        this.waiting_females = 0;
-        this.wrong = 0;
-        pthread_mutex_init(&mutex, NULL);
-        pthread_cond_init(&males_in_bathroom, NULL);
-        pthread_cond_init(&females_in_bathroom, NULL);
+        this->male_count = 0;
+        this->female_count = 0;
+        this->waiting_males = 0;
+        this->waiting_females = 0;
+        this->wrong = 0;
+        pthread_mutex_init(&this->mutex, NULL);
+        pthread_cond_init(&this->males_in_bathroom, NULL);
+        pthread_cond_init(&this->females_in_bathroom, NULL);
     }
 
     void manEnter(int thread_id) {
         pthread_mutex_lock(&mutex);
-        while(female_count > 0) 
+        if(this->female_count > 0) 
         {
-            waiting_males++;
-            pthread_cond_wait(&females_in_bathroom, &mutex);
-            waiting_males--;
+            this->waiting_males++;
+            pthread_cond_wait(&this->females_in_bathroom, &this->mutex);
+            this->waiting_males--;
         }
-        male_count++;
-        pthread_mutex_unlock(&mutex);
+        this->male_count++;
+        pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
     }
 
     void manExit(int thread_id) {
-        pthread_mutex_lock(&mutex);
-        male_count--;
-        if(male_count == 0) {
-            pthread_cond_signal(&males_in_bathroom);
+        pthread_mutex_lock(&this->mutex);
+        this->male_count--;
+        if(this->male_count == 0) {
+            pthread_cond_signal(&this->males_in_bathroom);
         }
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&this->mutex);
     }
 
     void womanEnter(int thread_id) {
-        pthread_mutex_lock(&mutex);
-        while(male_count > 0) 
+        pthread_mutex_lock(&this->mutex);
+        if(this->male_count > 0) 
         {
-            waiting_females++;
-            pthread_cond_wait(&males_in_bathroom, &mutex);
-            waiting_females--;
+            this->waiting_females++;
+            pthread_cond_wait(&this->males_in_bathroom, &this->mutex);
+            this->waiting_females--;
         }
-        female_count++;
-        pthread_mutex_unlock(&mutex);
+        this->female_count++;
+        pthread_mutex_unlock(&this->mutex);
         use_bathroom(thread_id);
     }
 
     void womanExit(int thread_id) {
-        pthread_mutex_lock(&mutex);
-        female_count--;
-        if(female_count == 0) {
-            pthread_cond_signal(&females_in_bathroom);
+        pthread_mutex_lock(&this->mutex);
+        this->female_count--;
+        if(this->female_count == 0) {
+            pthread_cond_signal(&this->females_in_bathroom);
         }
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&this->mutex);
     }
 };
 
