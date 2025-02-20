@@ -8,6 +8,9 @@ class client {
     public static void main(String[] args) throws InterruptedException {
         int inputPort = Integer.valueOf(args[0]);
         int clientNumber = Integer.valueOf(args[1]);
+
+        int timesToEat = 10;
+
         try {
             Socket client = new Socket("localhost", inputPort);
             System.out.println("Connected!");
@@ -16,9 +19,9 @@ class client {
 
             Random rand = new Random();
 
-            for(int i = 0; i < 10; i++) {
+            for(int i = 0; i < timesToEat; i++) {
                 out.write(clientNumber);
-                Thread.sleep(rand.nextInt(400, 1000));
+                Thread.sleep(rand.nextInt(1000, 3000));
             }
             out.write(100);
             client.close();
