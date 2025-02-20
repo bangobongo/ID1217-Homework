@@ -19,8 +19,10 @@ public class server {
         while(serverRunning) {
             try {
                 Socket clientSocket = server.accept();
-                System.out.println("Client connected!");
-                handleClientRequest(clientSocket);
+
+                Worker worker = new Worker(clientSocket);
+                Thread thr = new Thread(worker);
+                thr.start();
                 System.out.println("Finished!");
             } catch(IOException ex) {
                 System.out.println("Exception when running server: " + ex.getMessage());
@@ -29,17 +31,5 @@ public class server {
     
     }
 
-    private static void handleClientRequest(Socket clientSocket) throws IOException {
-        InputStream in = clientSocket.getInputStream();
-        boolean shouldRun = true;
-
-
-        while(shouldRun) {
-            int currentByte = in.read();
-            if(currentByte == 100) {
-                shouldRun = false;
-            }
-            System.out.println(currentByte);
-        }
-    }
+    
 }

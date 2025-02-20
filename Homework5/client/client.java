@@ -11,10 +11,14 @@ class client {
         try {
             Socket client = new Socket("localhost", inputPort);
             System.out.println("Connected!");
+
             OutputStream out = client.getOutputStream();
+
+            Random rand = new Random();
+
             for(int i = 0; i < 10; i++) {
                 out.write(clientNumber);
-                Thread.sleep(1000);
+                Thread.sleep(rand.nextInt(400, 1000));
             }
             out.write(100);
             client.close();
