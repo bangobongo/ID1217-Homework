@@ -5,13 +5,13 @@ import java.net.*;
 import java.util.*;
 
 class client {
-    private static final int lowerBound = 10;
-    private static final int upperBound = 30;
+    private static final int lowerBound = 100;
+    private static final int upperBound = 1000;
     public static void main(String[] args) throws InterruptedException {
         int inputPort = Integer.valueOf(args[0]);
         int clientNumber = Integer.valueOf(args[1]);
 
-        int timesToEat = 5;
+        int timesToEat = 7;
 
         try {
             Socket client = new Socket("localhost", inputPort);

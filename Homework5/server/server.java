@@ -65,8 +65,6 @@ public class server {
 
         boolean doHandle = true;
 
-        System.out.println("Before while");
-
         for(int i = 0; i < numOfSeats; i++) {
             notifyClient(outStreams[i]);
         }
@@ -74,15 +72,14 @@ public class server {
         while(doHandle) {
             shouldStop = true;
 
+            // Read commands from threads
             for(int client = 0; client < numOfSeats; client++) {
                 if(inStreams[client].available() >= 1) {
                     lastCommand[client] = inStreams[client].read();
                 }
-                
             }
 
-            
-
+            // Make clients release forks
             for(int client = 0; client < numOfSeats; client++) {
                 if(lastCommand[client] == doneEating) {
                     table.releaseForks(client);
@@ -90,6 +87,7 @@ public class server {
                 }
             }
 
+            // Make client eat if table allows
             for(int client = 0; client < numOfSeats; client++) {
                 if(lastCommand[client] == eat && table.canEat(client)) {
                     table.takeForks(client);
@@ -98,14 +96,17 @@ public class server {
                 }
             }
 
+            // Check if clients have sent done signal
             for(int client = 0; client < numOfSeats; client++) {
                 if(lastCommand[client] != isDone) {
                     shouldStop = false;
                 }
             }
 
-            table.printTableStatus();
-
+            if(table.hasChanged()) {
+                table.printTableStatus();
+            }
+            
             doHandle = !shouldStop;
         }
         System.out.println("FINISHED!!!!!");
