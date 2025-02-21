@@ -38,8 +38,8 @@ public class server {
                 if(connectedClients == numOfSeats) {
                     System.out.println("5 clients connected!");
                     handlePhilosophers(clients, table);
+                    break;
                 }
-                
             } catch(IOException ex) {
                 System.out.println("Exception when running server: " + ex.getMessage());
             }
@@ -70,50 +70,23 @@ public class server {
         }
 
         while(doHandle) {
-            shouldStop = true;
+            // Read messages from threads
+            lastCommand = getCommands(inStreams, lastCommand);
 
-            // Read commands from threads
-            for(int client = 0; client < numOfSeats; client++) {
-                if(inStreams[client].available() >= 1) {
-                    lastCommand[client] = inStreams[client].read();
-                }
-            }
+            // Make clients release forks if they are done eating
+            makeClientsReleaseForks(lastCommand, table);
 
-            // Make clients release forks
-            for(int client = 0; client < numOfSeats; client++) {
-                if(lastCommand[client] == doneEating) {
-                    table.releaseForks(client);
-                    lastCommand[client] = 0;
-                }
-            }
-
-            // Make client eat if table allows
-            for(int client = 0; client < numOfSeats; client++) {
-                if(lastCommand[client] == eat && table.canEat(client)) {
-                    table.takeForks(client);
-                    notifyClient(outStreams[client]);
-                    lastCommand[client] = 0;
-                }
-            }
-
-            // Check if clients have sent done signal
-            for(int client = 0; client < numOfSeats; client++) {
-                if(lastCommand[client] != isDone) {
-                    shouldStop = false;
-                }
-            }
+            // Make clients eat if table allows
+            makeClientsEat(lastCommand, table, outStreams);
 
             if(table.hasChanged()) {
-                table.printTableStatus();
+                table.printState();
             }
             
-            doHandle = !shouldStop;
+            doHandle = !allClientsAreDone(lastCommand);
         }
         System.out.println("FINISHED!!!!!");
-        for(int client = 0; client < numOfSeats; client++) {
-            clients[client].close();
-        }
-        
+        closeSockets(clients);
     }
 
     private static InputStream[] getInputStreams(Socket[] clients) throws IOException {
@@ -138,8 +111,47 @@ public class server {
         out.write(1);
     }
     
+    private static boolean allClientsAreDone(int[] lastCommand) {
+        boolean shouldStop = true;
+        for(int client = 0; client < numOfSeats; client++) {
+            if(lastCommand[client] != isDone) {
+                shouldStop = false;
+            }
+        }
+        return shouldStop;
+    }
 
+    private static void closeSockets(Socket[] sockets) throws IOException {
+        for(int client = 0; client < sockets.length; client++) {
+            sockets[client].close();
+        }
+    }
 
-
+    private static void makeClientsEat(int[] lastCommand, Table table, OutputStream[] outStreams) throws IOException {
+        for(int client = 0; client < numOfSeats; client++) {
+            if(lastCommand[client] == eat && table.canEat(client)) {
+                table.takeForks(client);
+                notifyClient(outStreams[client]);
+                lastCommand[client] = 0;
+            }
+        }
+    }
     
+    private static void makeClientsReleaseForks(int[] lastCommand, Table table) {
+        for(int client = 0; client < numOfSeats; client++) {
+            if(lastCommand[client] == doneEating) {
+                table.releaseForks(client);
+                lastCommand[client] = 0;
+            }
+        }
+    }
+
+    private static int[] getCommands(InputStream[] inStreams, int[] lastCommand) throws IOException {
+        for(int client = 0; client < numOfSeats; client++) {
+            if(inStreams[client].available() >= 1) {
+                lastCommand[client] = inStreams[client].read();
+            }
+        }
+        return lastCommand;
+    }
 }

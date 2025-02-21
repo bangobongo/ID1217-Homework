@@ -41,7 +41,7 @@ public class Table {
 
     }
 
-    public void printTableStatus() {
+    public void printState() {
         System.out.println("Table:");
         System.out.println("    [" +  xIfIsEating(this.seats[0]) + "]");
         System.out.println("[" + xIfIsEating(this.seats[4]) + "]     [" + xIfIsEating(this.seats[1]) + "]");

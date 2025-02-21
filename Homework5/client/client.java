@@ -11,7 +11,7 @@ class client {
         int inputPort = Integer.valueOf(args[0]);
         int clientNumber = Integer.valueOf(args[1]);
 
-        int timesToEat = 7;
+        int timesToEat = 15;
 
         try {
             Socket client = new Socket("localhost", inputPort);
