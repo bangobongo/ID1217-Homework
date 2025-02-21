@@ -22,9 +22,9 @@ class client {
             out.write(0);
 
             blockUntilReceivedData(client);
-
             System.out.println("Got go ahead!");
 
+            // Randomizes the time at which philosophers want to eat
             doThink();
 
             for(int i = 0; i < timesToEat; i++) {
