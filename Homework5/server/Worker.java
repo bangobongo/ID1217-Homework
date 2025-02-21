@@ -7,9 +7,11 @@ import java.net.Socket;
 public class Worker implements Runnable {
     
     private Socket client;
+    private Table table;
 
-    public Worker(Socket client) {
+    public Worker(Socket client, Table table) {
         this.client = client;
+        this.table = table;
     }
 
     public void run() {
@@ -22,17 +24,23 @@ public class Worker implements Runnable {
         }
     }
 
-    private static void handleClientRequest(Socket clientSocket) throws IOException {
+    private void handleClientRequest(Socket clientSocket) throws IOException {
         InputStream in = clientSocket.getInputStream();
+        OutputStream out = clientSocket.getOutputStream();
+
+        int clientNumber = in.read();
+
+        out.write(clientNumber);
+
         boolean shouldRun = true;
-
-        Table table = new Table();
-
         while(shouldRun) {
             int currentByte = in.read();
             if(currentByte != -1) {
-                System.out.println("Client " + currentByte + " wants to eat");
+                System.out.println("Client " + clientNumber + " says: " + currentByte);
+            } else {
+                shouldRun = false;
             }
+            this.table.printTableStatus();
         }
         System.out.println("Thread stopped!");
     }
