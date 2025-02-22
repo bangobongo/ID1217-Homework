@@ -20,7 +20,7 @@ public class client {
             int myStudentNumber = blockUntilReceivedData(client);
             System.out.println("Got go ahead, there are " + maxStudents + " students and my number is " + myStudentNumber);
 
-            int requestedStudent;
+            int requestedStudent = 0;
 
             // Cant request yourself, roll a new student
             while(requestedStudent == myStudentNumber) {
