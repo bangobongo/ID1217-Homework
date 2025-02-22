@@ -83,12 +83,11 @@ public class server {
          * as it is worded, strictly. Since we can only look at 2 students at a
          * time, their request has to be ignored, there is only one possible pairing.
          */
-        for(clientNumber = 1; clientNumber <= maxStudents; clientNumber+=2) {
-            if(clientNumber != maxStudents) {
-                sendPairMessage(clients[clientNumber-1], clients[clientNumber], clientNumber, clientNumber+1);
-            } else {
-                notifyClient(outStreams[maxStudents-1], clientNumber);
-            }
+        for(clientNumber = 1; clientNumber < maxStudents; clientNumber+=2) {
+            sendPairMessage(clients[clientNumber-1], clients[clientNumber], clientNumber, clientNumber+1);
+        }
+        if(maxStudents % 2 == 1) {
+            notifyClient(outStreams[maxStudents-1], maxStudents);
         }
     }
 
