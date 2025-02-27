@@ -1,5 +1,9 @@
 package Homework5.server;
 
+/*
+ * Helper class for the table in HW5 task 3.
+ */
+
 import java.lang.Math;
 
 public class Table {
@@ -43,9 +47,11 @@ public class Table {
 
     public void printState() {
         System.out.println("Table:");
-        System.out.println("    [" +  xIfIsEating(this.seats[0]) + "]");
+        System.out.println("     0");
+        System.out.println(" 4  [" +  xIfIsEating(this.seats[0]) + "]  1");
         System.out.println("[" + xIfIsEating(this.seats[4]) + "]     [" + xIfIsEating(this.seats[1]) + "]");
         System.out.println("  [" + xIfIsEating(this.seats[3]) + "] [" + xIfIsEating(this.seats[2]) + "]");
+        System.out.println("   3   2");
         
         System.out.println();
         System.out.println();

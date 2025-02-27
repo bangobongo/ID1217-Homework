@@ -1,3 +1,8 @@
+
+/*
+ * client for HW5 task 3
+ */
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -9,7 +14,6 @@ class client {
     private static final int upperBound = 1000;
     public static void main(String[] args) throws InterruptedException {
         int inputPort = Integer.valueOf(args[0]);
-        int clientNumber = Integer.valueOf(args[1]);
 
         int timesToEat = 15;
 
