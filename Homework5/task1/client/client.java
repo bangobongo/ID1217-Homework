@@ -1,3 +1,15 @@
+
+/*
+ * This is the client for task 1 in homework 5.
+ * 
+ * The approach used for the algorithm in task 1 is exactly as the task describes,
+ * the server pairs 2 students together by the order they come in, since that
+ * is the only possible way of doing it while still following the task description.
+ * 
+ * Usage:
+ *      java client <port>
+ */
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -18,16 +30,17 @@ public class client {
 
             int maxStudents = blockUntilReceivedData(client);
             int myStudentNumber = blockUntilReceivedData(client);
+
             System.out.println("Got go ahead, there are " + maxStudents + " students and my number is " + myStudentNumber);
 
-            int requestedStudent = 0;
+            int requestedStudent = rand.nextInt(1, maxStudents);
 
             // Cant request yourself, roll a new student
             while(requestedStudent == myStudentNumber) {
                 requestedStudent = rand.nextInt(1, maxStudents);
             }
             out.write(requestedStudent);
-            System.out.println("I requested student " + requestedStudent);
+            System.out.printf("I requested student %d.\n", requestedStudent);
 
             int partner = blockUntilReceivedData(client);
 
